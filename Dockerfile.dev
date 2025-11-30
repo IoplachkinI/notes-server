@@ -1,0 +1,24 @@
+# syntax=docker/dockerfile:1
+
+ARG RUST_VERSION=1.91.1
+FROM rust:${RUST_VERSION}-slim-bullseye AS dev
+
+WORKDIR /app
+
+# Install cargo-watch for hot reload
+RUN cargo install cargo-watch && \
+    cp /usr/local/cargo/bin/cargo-watch /usr/local/bin/
+
+# Copy dependency files
+COPY Cargo.toml Cargo.lock ./
+
+# Pre-build dependencies (this layer will be cached)
+RUN mkdir src && \
+    echo "fn main() {}" > src/main.rs && \
+    cargo build --release && \
+    rm -rf src
+
+# The source code will be mounted as a volume
+# Default command runs cargo watch
+CMD ["cargo", "watch", "-x", "run"]
+
