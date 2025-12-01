@@ -5,11 +5,45 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use axum_macros::debug_handler;
+use utoipa::OpenApi;
 
 use std::sync::Arc;
 
-use crate::{dto::CreateNoteRequest, dto::UpdateNoteRequest, service::NoteService};
+use crate::{
+    dto::{CreateNoteRequest, NoteResponse, UpdateNoteRequest},
+    service::NoteService,
+};
 
+#[derive(OpenApi)]
+#[openapi(
+    paths(
+        create_note,
+        update_note,
+        delete_note,
+        get_one_note,
+        get_all_notes
+    ),
+    components(schemas(
+        NoteResponse,
+        CreateNoteRequest,
+        UpdateNoteRequest
+    )),
+    tags(
+        (name = "notes", description = "Notes management API")
+    )
+)]
+pub struct ApiDoc;
+
+#[utoipa::path(
+    post,
+    path = "/notes",
+    request_body = CreateNoteRequest,
+    responses(
+        (status = 201, description = "Note created successfully", body = NoteResponse),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "notes"
+)]
 #[debug_handler]
 pub async fn create_note(
     State(service): State<Arc<NoteService>>,
@@ -24,6 +58,20 @@ pub async fn create_note(
     }
 }
 
+#[utoipa::path(
+    put,
+    path = "/notes/{id}",
+    params(
+        ("id" = i64, Path, description = "Note ID")
+    ),
+    request_body = UpdateNoteRequest,
+    responses(
+        (status = 200, description = "Note updated successfully", body = NoteResponse),
+        (status = 404, description = "Note not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "notes"
+)]
 #[debug_handler]
 pub async fn update_note(
     State(service): State<Arc<NoteService>>,
@@ -40,6 +88,19 @@ pub async fn update_note(
     }
 }
 
+#[utoipa::path(
+    delete,
+    path = "/notes/{id}",
+    params(
+        ("id" = i64, Path, description = "Note ID")
+    ),
+    responses(
+        (status = 204, description = "Note deleted successfully"),
+        (status = 404, description = "Note not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "notes"
+)]
 #[debug_handler]
 pub async fn delete_note(State(service): State<Arc<NoteService>>, Path(id): Path<i64>) -> Response {
     match service.delete_note(id).await {
@@ -52,6 +113,19 @@ pub async fn delete_note(State(service): State<Arc<NoteService>>, Path(id): Path
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/notes/{id}",
+    params(
+        ("id" = i64, Path, description = "Note ID")
+    ),
+    responses(
+        (status = 200, description = "Note found", body = NoteResponse),
+        (status = 404, description = "Note not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "notes"
+)]
 #[debug_handler]
 pub async fn get_one_note(
     State(service): State<Arc<NoteService>>,
@@ -67,6 +141,15 @@ pub async fn get_one_note(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/notes",
+    responses(
+        (status = 200, description = "List of all notes", body = Vec<NoteResponse>),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "notes"
+)]
 #[debug_handler]
 pub async fn get_all_notes(State(service): State<Arc<NoteService>>) -> Response {
     match service.get_all_notes().await {

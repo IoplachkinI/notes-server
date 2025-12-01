@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 
+#[allow(dead_code)]
 pub struct Note {
     pub id: i64,
     pub content: String,

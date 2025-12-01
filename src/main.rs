@@ -17,6 +17,8 @@ use handlers::rest;
 use repository::Repository;
 
 use tower_http::trace::TraceLayer;
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 use service::NoteService;
 
@@ -52,6 +54,7 @@ async fn main() {
         .route("/notes/{id}", delete(rest::delete_note))
         .route("/notes/{id}", get(rest::get_one_note))
         .route("/notes", get(rest::get_all_notes))
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-doc/openapi.json", rest::ApiDoc::openapi()))
         .with_state(Arc::new(service))
         .layer(TraceLayer::new_for_http());
 
