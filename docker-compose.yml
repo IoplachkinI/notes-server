@@ -1,10 +1,24 @@
 services:
-  server:
+  # Nginx load balancer
+  nginx:
+    image: nginx:alpine
+    ports:
+      - 4000:80
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - server1
+      - server2
+      - server3
+    profiles:
+      - release
+    restart: unless-stopped
+
+  # Server instance 1
+  server1:
     build:
       context: .
       target: final
-    ports:
-      - 4000:8000
     environment:
       - PG_DSN=postgresql://postgres:postgres@db:5432/postgres
       - RUST_LOG=debug
@@ -13,6 +27,38 @@ services:
         condition: service_healthy
     profiles:
       - release
+    restart: unless-stopped
+
+  # Server instance 2
+  server2:
+    build:
+      context: .
+      target: final
+    environment:
+      - PG_DSN=postgresql://postgres:postgres@db:5432/postgres
+      - RUST_LOG=debug
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles:
+      - release
+    restart: unless-stopped
+
+  # Server instance 3
+  server3:
+    build:
+      context: .
+      target: final
+    environment:
+      - PG_DSN=postgresql://postgres:postgres@db:5432/postgres
+      - RUST_LOG=debug
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles:
+      - release
+    restart: unless-stopped
+
   server-dev:
     build:
       context: .
