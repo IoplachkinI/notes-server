@@ -49,6 +49,7 @@ async fn main() {
     let app = Router::new()
         .route("/", get(root))
         .route("/notes", post(rest::create_note))
+        .route("/notes/:id", put(rest::update_note))
         .with_state(Arc::new(service))
         .layer(TraceLayer::new_for_http());
 
