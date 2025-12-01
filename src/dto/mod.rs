@@ -13,6 +13,5 @@ pub struct CreateNoteRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateNoteRequest {
-    pub id: i64,
     pub content: String,
 }

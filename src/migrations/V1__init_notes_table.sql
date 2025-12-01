@@ -1,36 +1,37 @@
 -- DATABASE SCHEMA
 
 CREATE TABLE notes (
-    id BIGINT PRIMARY KEY AUTOINCREMENT,
+    id BIGSERIAL PRIMARY KEY,
     content TEXT,
     created_at TIMESTAMP WITH TIME ZONE,
-    modified_at TIMESTAMP WITH TIME ZONE,
-)
+    updated_at TIMESTAMP WITH TIME ZONE
+);
 
 -- UPDATE TRIGGER
 
-CREATE FUNCTION set_updated_at() RETURNS TRIGGER AS $$
+CREATE OR REPLACE FUNCTION set_updated_at() RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at = NOW();
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER set_updated_at()
-BEFORE UPDATE ON my_table
+CREATE TRIGGER trigger_set_updated_at
+BEFORE UPDATE ON notes
 FOR EACH ROW
 EXECUTE FUNCTION set_updated_at();
 
 -- INSERT TRIGGER
 
-CREATE FUNCTION set_created_at() RETURNS TRIGGER AS $$
+CREATE OR REPLACE FUNCTION set_created_at() RETURNS TRIGGER AS $$
 BEGIN
     NEW.created_at = NOW();
+    NEW.updated_at = NOW();
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER set_created_at()
-BEFORE INSERT ON my_table
+CREATE TRIGGER trigger_set_created_at
+BEFORE INSERT ON notes
 FOR EACH ROW
 EXECUTE FUNCTION set_created_at();

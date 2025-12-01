@@ -11,7 +11,7 @@ use axum::{
     routing::{delete, get, post, put},
 };
 
-use std::{cell::RefCell, env, sync::Arc};
+use std::{env, sync::Arc};
 
 use handlers::rest;
 use repository::Repository;
@@ -30,17 +30,16 @@ async fn main() {
         env::var("PG_DSN").expect("database dsn must be provided as an ENV variable");
 
     // Repository creation and migration
-    let repo = Repository::new(database_dsn)
-        .await
-        .expect("failed to establish database connection");
+    let repo = Repository::new(database_dsn).await.unwrap_or_else(|e| {
+        tracing::error!("Failed to establish database connection: {e}");
+        panic!("failed to establish database connection: {e}");
+    });
     let repo_ptr = Arc::new(tokio::sync::Mutex::new(repo));
 
-    repo_ptr
-        .lock()
-        .await
-        .migrate()
-        .await
-        .expect("failed to migrate database");
+    repo_ptr.lock().await.migrate().await.unwrap_or_else(|e| {
+        tracing::error!("Failed to migrate database: {e}");
+        panic!("failed to migrate database: {e}");
+    });
 
     // Service creation
     let service = NoteService::new(repo_ptr.clone());
@@ -49,17 +48,24 @@ async fn main() {
     let app = Router::new()
         .route("/", get(root))
         .route("/notes", post(rest::create_note))
-        .route("/notes/:id", put(rest::update_note))
+        .route("/notes/{id}", put(rest::update_note))
+        .route("/notes/{id}", delete(rest::delete_note))
+        .route("/notes/{id}", get(rest::get_one_note))
+        .route("/notes", get(rest::get_all_notes))
         .with_state(Arc::new(service))
         .layer(TraceLayer::new_for_http());
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
 
     // Starting router
-    tracing::info!("Started listening on {}", listener.local_addr().unwrap());
-    axum::serve(listener, app)
-        .await
-        .expect("failed to start server");
+    let addr = listener.local_addr().unwrap();
+    tracing::info!("Server starting, listening on {}", addr);
+    tracing::info!("Server is ready to accept connections");
+
+    axum::serve(listener, app).await.unwrap_or_else(|e| {
+        tracing::error!("Server error: {e}");
+        panic!("failed to start server: {e}");
+    });
 }
 
 async fn root() -> Response {

@@ -5,6 +5,13 @@ FROM rust:${RUST_VERSION}-slim-bullseye AS dev
 
 WORKDIR /app
 
+# Install system deps
+RUN apt-get update && \
+    apt-get install -y \
+    libssl-dev \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install cargo-watch for hot reload
 RUN cargo install cargo-watch && \
     cp /usr/local/cargo/bin/cargo-watch /usr/local/bin/
@@ -15,7 +22,7 @@ COPY Cargo.toml Cargo.lock ./
 # Pre-build dependencies (this layer will be cached)
 RUN mkdir src && \
     echo "fn main() {}" > src/main.rs && \
-    cargo build --release && \
+    cargo build && \
     rm -rf src
 
 # The source code will be mounted as a volume

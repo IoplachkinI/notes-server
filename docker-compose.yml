@@ -6,11 +6,7 @@ services:
     ports:
       - 4000:8000
     environment:
-      - PG_DBNAME=postgres
-      - PG_HOST=db
-      - PG_USER=postgres
-      - PG_PASSWORD=postgres
-      - ADDRESS=0.0.0.0:8000
+      - PG_DSN=postgresql://postgres:postgres@db:5432/postgres
       - RUST_LOG=debug
     depends_on:
       db:
@@ -24,7 +20,7 @@ services:
     ports:
       - 4000:8000
     environment:
-      - PG_DSN=postgresql://postgres:postgres@localhost:5432/postgres
+      - PG_DSN=postgresql://postgres:postgres@db:5432/postgres
       - RUST_LOG=debug
     volumes:
       - ./src:/app/src:ro

@@ -11,7 +11,7 @@ pub struct Repository {
 }
 
 impl Repository {
-    pub async fn new(database_dsn: String) -> Result<Repository, tokio_postgres::Error> {
+    pub async fn new(database_dsn: String) -> Result<Self, tokio_postgres::Error> {
         let (client, con) = tokio_postgres::connect(&database_dsn, NoTls).await?;
 
         tokio::spawn(async move {
@@ -20,7 +20,7 @@ impl Repository {
             }
         });
 
-        Ok(Self { client: client })
+        Ok(Self { client })
     }
 
     pub async fn migrate(&mut self) -> Result<(), refinery::Error> {
@@ -39,7 +39,7 @@ impl Repository {
         Ok(())
     }
 
-    pub async fn create_note(&mut self, content: String) -> Result<Note, tokio_postgres::Error> {
+    pub async fn create_note(&self, content: String) -> Result<Note, tokio_postgres::Error> {
         let row = self.client.query_one(
             "INSERT INTO notes (content) VALUES ($1) RETURNING id, content, created_at, updated_at",
             &[&content],
@@ -54,24 +54,24 @@ impl Repository {
     }
 
     pub async fn update_note(
-        &mut self,
+        &self,
         id: i64,
         content: String,
-    ) -> Result<Note, tokio_postgres::Error> {
-        let row = self.client.query_one(
+    ) -> Result<Option<Note>, tokio_postgres::Error> {
+        let row = self.client.query_opt(
             "UPDATE notes SET content = $1 WHERE id = $2 RETURNING id, content, created_at, updated_at",
             &[&content, &id],
         ).await?;
 
-        Ok(Note {
+        Ok(row.map(|row| Note {
             id: row.get("id"),
             content: row.get("content"),
             created_at: row.get("created_at"),
             updated_at: row.get("updated_at"),
-        })
+        }))
     }
 
-    pub async fn delete_note(&mut self, id: i64) -> Result<bool, tokio_postgres::Error> {
+    pub async fn delete_note(&self, id: i64) -> Result<bool, tokio_postgres::Error> {
         let rows = self
             .client
             .execute("DELETE FROM notes WHERE id = $1", &[&id])
@@ -80,24 +80,24 @@ impl Repository {
         Ok(rows == 1)
     }
 
-    pub async fn get_one_note(&mut self, id: i64) -> Result<Note, tokio_postgres::Error> {
+    pub async fn get_one_note(&self, id: i64) -> Result<Option<Note>, tokio_postgres::Error> {
         let row = self
             .client
-            .query_one(
+            .query_opt(
                 "SELECT id, content, created_at, updated_at FROM notes WHERE id = $1",
                 &[&id],
             )
             .await?;
 
-        Ok(Note {
+        Ok(row.map(|row| Note {
             id: row.get("id"),
             content: row.get("content"),
             created_at: row.get("created_at"),
             updated_at: row.get("updated_at"),
-        })
+        }))
     }
 
-    pub async fn get_all_notes(&mut self) -> Result<Vec<Note>, tokio_postgres::Error> {
+    pub async fn get_all_notes(&self) -> Result<Vec<Note>, tokio_postgres::Error> {
         let rows = self
             .client
             .query("SELECT id, content, created_at, updated_at FROM notes", &[])
@@ -105,13 +105,13 @@ impl Repository {
 
         let mut vec: Vec<Note> = Vec::new();
 
-        for row in rows.iter() {
+        for row in rows {
             vec.push(Note {
                 id: row.get("id"),
                 content: row.get("content"),
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
-            })
+            });
         }
 
         Ok(vec)
