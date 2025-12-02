@@ -46,8 +46,8 @@ async fn main() {
     // Service creation
     let service = NoteService::new(repo_ptr.clone());
 
-    // Router config
-    let app = Router::new()
+    // REST router config
+    let rest_router = Router::new()
         .route("/", get(root))
         .route("/notes", post(rest::create_note))
         .route("/notes/{id}", put(rest::update_note))
@@ -58,6 +58,10 @@ async fn main() {
         .with_state(Arc::new(service))
         .layer(TraceLayer::new_for_http());
 
+    // SOAP router config
+
+    let router = Router::new().nest("/rest", rest_router);
+
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
 
     // Starting router
@@ -65,7 +69,7 @@ async fn main() {
     tracing::info!("Server starting, listening on {}", addr);
     tracing::info!("Server is ready to accept connections");
 
-    axum::serve(listener, app).await.unwrap_or_else(|e| {
+    axum::serve(listener, router).await.unwrap_or_else(|e| {
         tracing::error!("Server error: {e}");
         panic!("failed to start server: {e}");
     });
