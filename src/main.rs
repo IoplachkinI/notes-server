@@ -22,6 +22,8 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use service::NoteService;
 
+use crate::handlers::soap;
+
 #[tokio::main]
 async fn main() {
     // Log setup
@@ -44,7 +46,7 @@ async fn main() {
     });
 
     // Service creation
-    let service = NoteService::new(repo_ptr.clone());
+    let service = Arc::new(NoteService::new(repo_ptr.clone()));
 
     // REST router config
     let rest_router = Router::new()
@@ -55,12 +57,18 @@ async fn main() {
         .route("/notes/{id}", get(rest::get_one_note))
         .route("/notes", get(rest::get_all_notes))
         .merge(SwaggerUi::new("/swagger-ui").url("/api-doc/openapi.json", rest::ApiDoc::openapi()))
-        .with_state(Arc::new(service))
+        .with_state(service.clone())
         .layer(TraceLayer::new_for_http());
 
     // SOAP router config
+    let soap_router = Router::new()
+        .route("/", post(soap::handle_request))
+        .with_state(service.clone())
+        .layer(TraceLayer::new_for_http());
 
-    let router = Router::new().nest("/rest", rest_router);
+    let router = Router::new()
+        .nest("/rest", rest_router)
+        .nest("/soap", soap_router);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
 
