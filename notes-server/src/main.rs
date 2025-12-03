@@ -56,7 +56,13 @@ async fn main() {
         .route("/notes/{id}", delete(rest::delete_note))
         .route("/notes/{id}", get(rest::get_one_note))
         .route("/notes", get(rest::get_all_notes))
-        .merge(SwaggerUi::new("/swagger-ui").url("/api-doc/openapi.json", rest::ApiDoc::openapi()))
+        .merge(
+            SwaggerUi::new("/swagger-ui")
+                .config(utoipa_swagger_ui::Config::new([
+                    "/rest/api-doc/openapi.json",
+                ]))
+                .url("/api-doc/openapi.json", rest::ApiDoc::openapi()),
+        )
         .with_state(service.clone())
         .layer(TraceLayer::new_for_http());
 

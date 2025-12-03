@@ -5,7 +5,3 @@ members = [
 ]
 resolver = "2"
 
-# Force all dependencies to use axum 0.8.7 to avoid version conflicts
-[patch.crates-io]
-axum = "0.8.7"
-
