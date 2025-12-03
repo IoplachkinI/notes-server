@@ -22,7 +22,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use service::NoteService;
 
-use crate::handlers::soap;
+use crate::handlers::{grpc, soap};
 
 #[tokio::main]
 async fn main() {
@@ -70,17 +70,36 @@ async fn main() {
         .nest("/rest", rest_router)
         .nest("/soap", soap_router);
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
+    let http_listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
+    let http_addr = http_listener.local_addr().unwrap();
 
-    // Starting router
-    let addr = listener.local_addr().unwrap();
-    tracing::info!("Server starting, listening on {}", addr);
-    tracing::info!("Server is ready to accept connections");
+    // gRPC server setup
+    let grpc_addr = "0.0.0.0:50051".parse().unwrap();
+    let grpc_service = grpc::create_grpc_server(service.clone());
 
-    axum::serve(listener, router).await.unwrap_or_else(|e| {
-        tracing::error!("Server error: {e}");
-        panic!("failed to start server: {e}");
-    });
+    let grpc_server = tonic::transport::Server::builder()
+        .add_service(grpc_service)
+        .serve(grpc_addr);
+
+    tracing::info!("REST/SOAP server starting, listening on {}", http_addr);
+    tracing::info!("gRPC server starting, listening on {}", grpc_addr);
+    tracing::info!("Servers are ready to accept connections");
+
+    // Run both servers concurrently
+    tokio::select! {
+        result = axum::serve(http_listener, router) => {
+            if let Err(e) = result {
+                tracing::error!("HTTP server error: {e}");
+                panic!("failed to start HTTP server: {e}");
+            }
+        }
+        result = grpc_server => {
+            if let Err(e) = result {
+                tracing::error!("gRPC server error: {e}");
+                panic!("failed to start gRPC server: {e}");
+            }
+        }
+    }
 }
 
 async fn root() -> Response {

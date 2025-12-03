@@ -39,7 +39,7 @@ pub struct SoapBody {
     pub get_one: Option<GetOneNoteRequest>,
 
     /// ``GetAllNotes`` operation request
-    #[yaserde(rename = "UpdateNote", prefix = "m")]
+    #[yaserde(rename = "GetAllNotes", prefix = "m")]
     pub get_all: Option<GetAllNotesRequest>,
 
     /// ``UpdateNote`` operation request
@@ -363,7 +363,8 @@ fn build_ok_response(xml_body: String) -> Response {
 
 fn build_soap_fault(fault_code: SoapFaultCode, fault_string: &str) -> String {
     format!(
-        r#"<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+        <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
   <soap:Body>
     <soap:Fault>
       <faultcode>{fault_code}</faultcode>

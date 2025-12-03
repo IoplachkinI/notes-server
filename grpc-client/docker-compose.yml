@@ -1,0 +1,12 @@
+services:
+  client:
+    build:
+      context: ..  # Parent directory to access proto files
+      dockerfile: grpc-client/Dockerfile
+      target: final
+    environment:
+      - GRPC_SERVER_ADDR=${GRPC_SERVER_ADDR:-http://host.docker.internal:5000}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: "no"
+

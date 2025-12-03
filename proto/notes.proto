@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package notes;
+
+// Note service definition
+service NoteService {
+  // Create a new note
+  rpc CreateNote(CreateNoteRequest) returns (NoteResponse);
+  
+  // Get a single note by ID
+  rpc GetNote(GetNoteRequest) returns (NoteResponse);
+  
+  // Get all notes
+  rpc GetAllNotes(GetAllNotesRequest) returns (GetAllNotesResponse);
+  
+  // Update an existing note
+  rpc UpdateNote(UpdateNoteRequest) returns (NoteResponse);
+  
+  // Delete a note by ID
+  rpc DeleteNote(DeleteNoteRequest) returns (DeleteNoteResponse);
+}
+
+// Request to create a note
+message CreateNoteRequest {
+  string content = 1;
+}
+
+// Request to get a note by ID
+message GetNoteRequest {
+  int64 id = 1;
+}
+
+// Request to get all notes
+message GetAllNotesRequest {
+}
+
+// Request to update a note
+message UpdateNoteRequest {
+  int64 id = 1;
+  string content = 2;
+}
+
+// Request to delete a note
+message DeleteNoteRequest {
+  int64 id = 1;
+}
+
+// Response containing a single note
+message NoteResponse {
+  int64 id = 1;
+  string content = 2;
+}
+
+// Response containing multiple notes
+message GetAllNotesResponse {
+  repeated NoteResponse notes = 1;
+}
+
+// Response for delete operation
+message DeleteNoteResponse {
+  bool success = 1;
+}
+

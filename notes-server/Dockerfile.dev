@@ -10,6 +10,7 @@ RUN apt-get update && \
     apt-get install -y \
     libssl-dev \
     pkg-config \
+    protobuf-compiler \
     && rm -rf /var/lib/apt/lists/*
 
 # Install cargo-watch for hot reload
@@ -27,5 +28,6 @@ RUN mkdir src && \
 
 # The source code will be mounted as a volume
 # Default command runs cargo watch
-CMD ["cargo", "watch", "-x", "run"]
+# Using 'build' ensures build.rs runs before compilation
+CMD ["cargo", "watch", "-x", "build", "-x", "run"]
 

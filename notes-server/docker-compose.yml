@@ -65,6 +65,7 @@ services:
       dockerfile: Dockerfile.dev
     ports:
       - 4000:8000
+      - 5000:50051
     environment:
       - PG_DSN=postgresql://postgres:postgres@db:5432/postgres
       - RUST_LOG=debug
@@ -72,6 +73,8 @@ services:
       - ./src:/app/src:ro
       - ./Cargo.toml:/app/Cargo.toml:ro
       - ./Cargo.lock:/app/Cargo.lock:ro
+      - ./build.rs:/app/build.rs:ro
+      - ../proto:/proto:ro
       - target:/app/target
       - cargo-cache:/usr/local/cargo/registry
     depends_on:
