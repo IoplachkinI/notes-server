@@ -1,7 +1,7 @@
 [workspace]
 members = [
     "notes-server",
-    "grpc-client",
+    "grpc-client"
 ]
 resolver = "2"
 

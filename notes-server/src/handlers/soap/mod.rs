@@ -6,85 +6,79 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use yaserde_derive::{YaDeserialize, YaSerialize};
+use serde::{Deserialize, Serialize};
 
 use crate::{dto, service::NoteService};
 
 // Request envelope
 
-#[derive(Debug, YaDeserialize, YaSerialize)]
-#[yaserde(
-    rename = "Envelope",
-    namespaces = {
-      "soap" = "http://www.w3.org/2003/05/soap-envelope",
-    },
-    prefix = "soap"
-  )]
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename = "Envelope")]
+#[serde(rename_all = "camelCase")]
 pub struct SoapEnvelope {
-    #[yaserde(rename = "Body", prefix = "soap")]
+    #[serde(rename = "Body")]
     pub body: SoapBody,
 }
 
 // Request body
 
-#[derive(Debug, YaDeserialize, YaSerialize)]
-#[yaserde(namespaces = {"m" = "https://notes-server/soap/v1"})]
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SoapBody {
     /// ``CreateNote`` operation request
-    #[yaserde(rename = "CreateNote", prefix = "m")]
+    #[serde(rename = "CreateNote")]
     pub create: Option<CreateNoteRequest>,
 
     /// ``GetOneNote`` operation request
-    #[yaserde(rename = "GetNote", prefix = "m")]
+    #[serde(rename = "GetNote")]
     pub get_one: Option<GetOneNoteRequest>,
 
     /// ``GetAllNotes`` operation request
-    #[yaserde(rename = "GetAllNotes", prefix = "m")]
+    #[serde(rename = "GetAllNotes")]
     pub get_all: Option<GetAllNotesRequest>,
 
     /// ``UpdateNote`` operation request
-    #[yaserde(rename = "UpdateNote", prefix = "m")]
+    #[serde(rename = "UpdateNote")]
     pub update: Option<UpdateNoteRequest>,
 
     /// ``DeleteNote`` operation request
-    #[yaserde(rename = "DeleteNote", prefix = "m")]
+    #[serde(rename = "DeleteNote")]
     pub delete: Option<DeleteNoteRequest>,
 }
 
 // Request content variants
 
-#[derive(Debug, YaDeserialize, YaSerialize)]
-#[yaserde(namespaces = {"m" = "https://notes-server/soap/v1"})]
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateNoteRequest {
-    #[yaserde(rename = "Content", prefix = "m")]
+    #[serde(rename = "Content")]
     pub content: String,
 }
 
-#[derive(Debug, YaDeserialize, YaSerialize)]
-#[yaserde(namespaces = {"m" = "https://notes-server/soap/v1"})]
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GetOneNoteRequest {
-    #[yaserde(rename = "Id", prefix = "m")]
+    #[serde(rename = "Id")]
     pub id: i64,
 }
 
-#[derive(Debug, YaDeserialize, YaSerialize)]
-#[yaserde(namespaces = {"m" = "https://notes-server/soap/v1"})]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct GetAllNotesRequest;
 
-#[derive(Debug, YaDeserialize, YaSerialize)]
-#[yaserde(namespaces = {"m" = "https://notes-server/soap/v1"})]
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateNoteRequest {
-    #[yaserde(rename = "Id", prefix = "m")]
+    #[serde(rename = "Id")]
     pub id: i64,
 
-    #[yaserde(rename = "Content", prefix = "m")]
+    #[serde(rename = "Content")]
     pub content: String,
 }
 
-#[derive(Debug, YaDeserialize, YaSerialize)]
-#[yaserde(namespaces = {"m" = "https://notes-server/soap/v1"})]
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DeleteNoteRequest {
-    #[yaserde(rename = "Id", prefix = "m")]
+    #[serde(rename = "Id")]
     pub id: i64,
 }
 
@@ -118,140 +112,67 @@ fn to_operation(body: SoapBody) -> Option<NoteOperationRequest> {
 
 // Common response elements
 
-#[derive(Debug, YaDeserialize, YaSerialize)]
-#[yaserde(namespaces = {"m" = "https://notes-server/soap/v1"})]
-pub struct NoteResponse {
-    #[yaserde(rename = "Note", prefix = "m")]
-    pub note: NoteResponseXml,
-}
-
-#[derive(Debug, YaDeserialize, YaSerialize)]
+#[derive(Debug, Serialize)]
 pub struct NoteResponseXml {
-    #[yaserde(rename = "Id", prefix = "m")]
+    #[serde(rename = "m:Id")]
     pub id: i64,
 
-    #[yaserde(rename = "Content", prefix = "m")]
+    #[serde(rename = "m:Content")]
     pub content: String,
 }
 
 // CreateResponse
 
-#[derive(Debug, YaDeserialize, YaSerialize)]
-#[yaserde(
-    rename = "Envelope",
-    namespaces = {
-      "soap" = "http://www.w3.org/2003/05/soap-envelope",
-    },
-    prefix = "soap"
-  )]
-pub struct CreateNoteResponseEnvelope {
-    #[yaserde(rename = "Body", prefix = "soap")]
-    pub body: CreateNoteResponseBody,
-}
-
-#[derive(Debug, YaDeserialize, YaSerialize)]
-pub struct CreateNoteResponseBody {
-    #[yaserde(rename = "CreateNoteResponse", prefix = "m")]
-    pub response: NoteResponse,
+#[derive(Debug, Serialize)]
+#[serde(rename = "m:CreateNoteResponse")]
+pub struct CreateNoteResponse {
+    #[serde(rename = "@xmlns:m")]
+    pub m_ns: String,
+    #[serde(rename = "m:Note")]
+    pub note: NoteResponseXml,
 }
 
 // GetOneResponse
 
-#[derive(Debug, YaDeserialize, YaSerialize)]
-#[yaserde(
-    rename = "Envelope",
-    namespaces = {
-      "soap" = "http://www.w3.org/2003/05/soap-envelope",
-    },
-    prefix = "soap"
-  )]
-pub struct GetOneNoteResponseEnvelope {
-    #[yaserde(rename = "Body", prefix = "m")]
-    pub body: GetOneNoteResponseBody,
-}
-
-#[derive(Debug, YaDeserialize, YaSerialize)]
-#[yaserde(namespaces = {"m" = "https://notes-server/soap/v1"})]
-pub struct GetOneNoteResponseBody {
-    #[yaserde(rename = "GetOneNoteResponse", prefix = "m")]
-    pub response: NoteResponse,
+#[derive(Debug, Serialize)]
+#[serde(rename = "m:GetOneNoteResponse")]
+pub struct GetOneNoteResponse {
+    #[serde(rename = "@xmlns:m")]
+    pub m_ns: String,
+    #[serde(rename = "m:Note")]
+    pub note: NoteResponseXml,
 }
 
 // GetAllResponse
 
-#[derive(Debug, YaDeserialize, YaSerialize)]
-#[yaserde(
-    rename = "Envelope",
-    namespaces = {
-      "soap" = "http://www.w3.org/2003/05/soap-envelope",
-    },
-    prefix = "soap"
-  )]
-pub struct GetAllNotesResponseEnvelope {
-    #[yaserde(rename = "Body", prefix = "soap")]
-    pub body: GetAllNotesResponseBody,
-}
-
-#[derive(Debug, YaDeserialize, YaSerialize)]
-#[yaserde(namespaces = {"m" = "https://notes-server/soap/v1"})]
-pub struct GetAllNotesResponseBody {
-    #[yaserde(rename = "GetAllNotesResponse", prefix = "m")]
-    pub response: GetAllNotesResponse,
-}
-
-#[derive(Debug, YaDeserialize, YaSerialize)]
+#[derive(Debug, Serialize)]
+#[serde(rename = "m:GetAllNotesResponse")]
 pub struct GetAllNotesResponse {
-    #[yaserde(rename = "Note", prefix = "m")]
+    #[serde(rename = "@xmlns:m")]
+    pub m_ns: String,
+    #[serde(rename = "m:Note")]
     pub notes: Vec<NoteResponseXml>,
 }
 
 // UpdateResponse
 
-#[derive(Debug, YaDeserialize, YaSerialize)]
-#[yaserde(
-    rename = "Envelope",
-    namespaces = {
-      "soap" = "http://www.w3.org/2003/05/soap-envelope",
-    },
-    prefix = "soap"
-  )]
-pub struct UpdateNoteResponseEnvelope {
-    #[yaserde(rename = "Body", prefix = "soap")]
-    pub body: UpdateNoteResponseBody,
-}
-
-#[derive(Debug, YaDeserialize, YaSerialize)]
-#[yaserde(namespaces = {"m" = "https://notes-server/soap/v1"})]
-pub struct UpdateNoteResponseBody {
-    #[yaserde(rename = "UpdateNoteResponse", prefix = "m")]
-    pub response: NoteResponse,
+#[derive(Debug, Serialize)]
+#[serde(rename = "m:UpdateNoteResponse")]
+pub struct UpdateNoteResponse {
+    #[serde(rename = "@xmlns:m")]
+    pub m_ns: String,
+    #[serde(rename = "m:Note")]
+    pub note: NoteResponseXml,
 }
 
 // DeleteResponse
 
-#[derive(Debug, YaDeserialize, YaSerialize)]
-#[yaserde(
-    rename = "Envelope",
-    namespaces = {
-      "soap" = "http://www.w3.org/2003/05/soap-envelope",
-    },
-    prefix = "soap"
-  )]
-pub struct DeleteNoteResponseEnvelope {
-    #[yaserde(rename = "Body", prefix = "soap")]
-    pub body: DeleteNoteResponseBody,
+#[derive(Debug, Serialize)]
+#[serde(rename = "m:DeleteNoteResponse")]
+pub struct DeleteNoteResponse {
+    #[serde(rename = "@xmlns:m")]
+    pub m_ns: String,
 }
-
-#[derive(Debug, YaDeserialize, YaSerialize)]
-#[yaserde(namespaces = {"m" = "https://notes-server/soap/v1"})]
-pub struct DeleteNoteResponseBody {
-    #[yaserde(rename = "DeleteNoteResponse", prefix = "m")]
-    pub response: DeleteNoteResponse,
-}
-
-#[derive(Debug, YaDeserialize, YaSerialize)]
-#[yaserde(namespaces = {"m" = "https://notes-server/soap/v1"})]
-pub struct DeleteNoteResponse {}
 
 /// Main SOAP handler entrypoint
 pub async fn handle_request(State(service): State<Arc<NoteService>>, body: Bytes) -> Response {
@@ -259,7 +180,7 @@ pub async fn handle_request(State(service): State<Arc<NoteService>>, body: Bytes
         return (StatusCode::BAD_REQUEST, "Request body must be valid UTF-8").into_response();
     };
 
-    let envelope: SoapEnvelope = match yaserde::de::from_str(body_str) {
+    let envelope: SoapEnvelope = match serde_xml_rs::from_str(body_str) {
         Ok(env) => env,
         Err(e) => {
             tracing::error!("Failed to deserialize SOAP envelope: {e}");
@@ -364,7 +285,7 @@ fn build_ok_response(xml_body: String) -> Response {
 fn build_soap_fault(fault_code: SoapFaultCode, fault_string: &str) -> String {
     format!(
         r#"<?xml version="1.0" encoding="UTF-8"?>
-        <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" soap:encodingStyle="http://www.w3.org/2003/05/soap-encoding">
   <soap:Body>
     <soap:Fault>
       <faultcode>{fault_code}</faultcode>
@@ -376,6 +297,23 @@ fn build_soap_fault(fault_code: SoapFaultCode, fault_string: &str) -> String {
     )
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename = "soap:Envelope", rename_all = "kebab-case")]
+struct CreateNoteEnvelope {
+    #[serde(rename = "@xmlns:soap")]
+    soap_ns: String,
+    #[serde(rename = "@soap:encodingStyle")]
+    encoding_style: String,
+    #[serde(rename = "soap:Body")]
+    body: CreateNoteBody,
+}
+
+#[derive(Debug, Serialize)]
+struct CreateNoteBody {
+    #[serde(rename = "m:CreateNoteResponse")]
+    response: CreateNoteResponse,
+}
+
 async fn handle_create_note(service: &NoteService, req: CreateNoteRequest) -> Response {
     let dto_req = dto::CreateNoteRequest {
         content: req.content,
@@ -383,20 +321,23 @@ async fn handle_create_note(service: &NoteService, req: CreateNoteRequest) -> Re
 
     match service.create_note(dto_req).await {
         Ok(note) => {
-            let note_xml = NoteResponseXml {
-                id: note.id,
-                content: note.content,
-            };
-
-            let response_envelope = CreateNoteResponseEnvelope {
-                body: CreateNoteResponseBody {
-                    response: NoteResponse { note: note_xml },
+            let response = CreateNoteResponse {
+                m_ns: "https://notes-server/soap/v1".to_string(),
+                note: NoteResponseXml {
+                    id: note.id,
+                    content: note.content,
                 },
             };
 
-            let xml_body = match yaserde::ser::to_string(&response_envelope) {
+            let envelope = CreateNoteEnvelope {
+                soap_ns: "http://www.w3.org/2003/05/soap-envelope".to_string(),
+                encoding_style: "http://www.w3.org/2003/05/soap-encoding".to_string(),
+                body: CreateNoteBody { response },
+            };
+
+            let xml_body = match quick_xml::se::to_string(&envelope) {
                 Ok(s) => s,
-                Err(e) => return handle_serialization_error(&e),
+                Err(e) => return handle_serialization_error(&format!("{e}")),
             };
 
             build_ok_response(xml_body)
@@ -405,23 +346,43 @@ async fn handle_create_note(service: &NoteService, req: CreateNoteRequest) -> Re
     }
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename = "soap:Envelope")]
+struct GetOneNoteEnvelope {
+    #[serde(rename = "@xmlns:soap")]
+    soap_ns: String,
+    #[serde(rename = "@soap:encodingStyle")]
+    encoding_style: String,
+    #[serde(rename = "soap:Body")]
+    body: GetOneNoteBody,
+}
+
+#[derive(Debug, Serialize)]
+struct GetOneNoteBody {
+    #[serde(rename = "m:GetOneNoteResponse")]
+    response: GetOneNoteResponse,
+}
+
 async fn handle_get_one_note(service: &NoteService, req: GetOneNoteRequest) -> Response {
     match service.get_one_note(req.id).await {
         Ok(Some(note)) => {
-            let note_xml = NoteResponseXml {
-                id: note.id,
-                content: note.content,
-            };
-
-            let response_envelope = GetOneNoteResponseEnvelope {
-                body: GetOneNoteResponseBody {
-                    response: NoteResponse { note: note_xml },
+            let response = GetOneNoteResponse {
+                m_ns: "https://notes-server/soap/v1".to_string(),
+                note: NoteResponseXml {
+                    id: note.id,
+                    content: note.content,
                 },
             };
 
-            let xml_body = match yaserde::ser::to_string(&response_envelope) {
+            let envelope = GetOneNoteEnvelope {
+                soap_ns: "http://www.w3.org/2003/05/soap-envelope".to_string(),
+                encoding_style: "http://www.w3.org/2003/05/soap-encoding".to_string(),
+                body: GetOneNoteBody { response },
+            };
+
+            let xml_body = match quick_xml::se::to_string(&envelope) {
                 Ok(s) => s,
-                Err(e) => return handle_serialization_error(&e),
+                Err(e) => return handle_serialization_error(&format!("{e}")),
             };
 
             build_ok_response(xml_body)
@@ -431,33 +392,71 @@ async fn handle_get_one_note(service: &NoteService, req: GetOneNoteRequest) -> R
     }
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename = "soap:Envelope")]
+struct GetAllNotesEnvelope {
+    #[serde(rename = "@xmlns:soap")]
+    soap_ns: String,
+    #[serde(rename = "@soap:encodingStyle")]
+    encoding_style: String,
+    #[serde(rename = "soap:Body")]
+    body: GetAllNotesBody,
+}
+
+#[derive(Debug, Serialize)]
+struct GetAllNotesBody {
+    #[serde(rename = "m:GetAllNotesResponse")]
+    response: GetAllNotesResponse,
+}
+
 async fn handle_get_all_notes(service: &NoteService) -> Response {
     match service.get_all_notes().await {
         Ok(notes) => {
-            let mut notes_resp: Vec<NoteResponseXml> = Vec::new();
-
-            for note in notes {
-                notes_resp.push(NoteResponseXml {
+            let notes_xml: Vec<NoteResponseXml> = notes
+                .into_iter()
+                .map(|note| NoteResponseXml {
                     id: note.id,
                     content: note.content,
-                });
-            }
+                })
+                .collect();
 
-            let response_envelope = GetAllNotesResponseEnvelope {
-                body: GetAllNotesResponseBody {
-                    response: GetAllNotesResponse { notes: notes_resp },
-                },
+            let response = GetAllNotesResponse {
+                m_ns: "https://notes-server/soap/v1".to_string(),
+                notes: notes_xml,
             };
 
-            let xml_body = match yaserde::ser::to_string(&response_envelope) {
+            let envelope = GetAllNotesEnvelope {
+                soap_ns: "http://www.w3.org/2003/05/soap-envelope".to_string(),
+                encoding_style: "http://www.w3.org/2003/05/soap-encoding".to_string(),
+                body: GetAllNotesBody { response },
+            };
+
+            let xml_body = match quick_xml::se::to_string(&envelope) {
                 Ok(s) => s,
-                Err(e) => return handle_serialization_error(&e),
+                Err(e) => return handle_serialization_error(&format!("{e}")),
             };
 
             build_ok_response(xml_body)
         }
         Err(e) => handle_internal_error(&e, "Failed to get note"),
     }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename = "soap:Envelope")]
+struct UpdateNoteEnvelope {
+    #[serde(rename = "@xmlns:soap")]
+    soap_ns: String,
+    #[serde(rename = "@soap:encodingStyle")]
+    encoding_style: String,
+    #[serde(rename = "soap:Body")]
+    body: UpdateNoteBody,
+}
+
+#[derive(Debug, Serialize)]
+struct UpdateNoteBody {
+    #[serde(rename = "m:UpdateNoteResponse")]
+    response: UpdateNoteResponse,
 }
 
 async fn handle_update_note(service: &NoteService, req: UpdateNoteRequest) -> Response {
@@ -467,20 +466,23 @@ async fn handle_update_note(service: &NoteService, req: UpdateNoteRequest) -> Re
 
     match service.update_note(req.id, dto_req).await {
         Ok(Some(note)) => {
-            let note_xml = NoteResponseXml {
-                id: note.id,
-                content: note.content,
-            };
-
-            let response_envelope = UpdateNoteResponseEnvelope {
-                body: UpdateNoteResponseBody {
-                    response: NoteResponse { note: note_xml },
+            let response = UpdateNoteResponse {
+                m_ns: "https://notes-server/soap/v1".to_string(),
+                note: NoteResponseXml {
+                    id: note.id,
+                    content: note.content,
                 },
             };
 
-            let xml_body = match yaserde::ser::to_string(&response_envelope) {
+            let envelope = UpdateNoteEnvelope {
+                soap_ns: "http://www.w3.org/2003/05/soap-envelope".to_string(),
+                encoding_style: "http://www.w3.org/2003/05/soap-encoding".to_string(),
+                body: UpdateNoteBody { response },
+            };
+
+            let xml_body = match quick_xml::se::to_string(&envelope) {
                 Ok(s) => s,
-                Err(e) => return handle_serialization_error(&e),
+                Err(e) => return handle_serialization_error(&format!("{e}")),
             };
 
             build_ok_response(xml_body)
@@ -490,18 +492,39 @@ async fn handle_update_note(service: &NoteService, req: UpdateNoteRequest) -> Re
     }
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename = "soap:Envelope")]
+struct DeleteNoteEnvelope {
+    #[serde(rename = "@xmlns:soap")]
+    soap_ns: String,
+    #[serde(rename = "@soap:encodingStyle")]
+    encoding_style: String,
+    #[serde(rename = "soap:Body")]
+    body: DeleteNoteBody,
+}
+
+#[derive(Debug, Serialize)]
+struct DeleteNoteBody {
+    #[serde(rename = "m:DeleteNoteResponse")]
+    response: DeleteNoteResponse,
+}
+
 async fn handle_delete_note(service: &NoteService, req: DeleteNoteRequest) -> Response {
     match service.delete_note(req.id).await {
         Ok(true) => {
-            let response_envelope = DeleteNoteResponseEnvelope {
-                body: DeleteNoteResponseBody {
-                    response: DeleteNoteResponse {},
-                },
+            let response = DeleteNoteResponse {
+                m_ns: "https://notes-server/soap/v1".to_string(),
             };
 
-            let xml_body = match yaserde::ser::to_string(&response_envelope) {
+            let envelope = DeleteNoteEnvelope {
+                soap_ns: "http://www.w3.org/2003/05/soap-envelope".to_string(),
+                encoding_style: "http://www.w3.org/2003/05/soap-encoding".to_string(),
+                body: DeleteNoteBody { response },
+            };
+
+            let xml_body = match quick_xml::se::to_string(&envelope) {
                 Ok(s) => s,
-                Err(e) => return handle_serialization_error(&e),
+                Err(e) => return handle_serialization_error(&format!("{e}")),
             };
 
             build_ok_response(xml_body)

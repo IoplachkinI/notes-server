@@ -20,14 +20,19 @@ RUN cargo install cargo-watch && \
 # Copy dependency files
 COPY Cargo.toml Cargo.lock ./
 
+# Copy workspace member Cargo.toml files
+COPY notes-server/Cargo.toml ./notes-server/
+COPY grpc-client/Cargo.toml ./grpc-client/
+
 # Pre-build dependencies (this layer will be cached)
-RUN mkdir src && \
-    echo "fn main() {}" > src/main.rs && \
-    cargo build && \
-    rm -rf src
+RUN mkdir -p notes-server/src grpc-client/src && \
+    echo "fn main() {}" > notes-server/src/main.rs && \
+    echo "fn main() {}" > grpc-client/src/main.rs && \
+    cargo build -p notes-server && \
+    rm -rf notes-server/src grpc-client/src
 
 # The source code will be mounted as a volume
 # Default command runs cargo watch
 # Using 'build' ensures build.rs runs before compilation
-CMD ["cargo", "watch", "-x", "build", "-x", "run"]
+CMD ["cargo", "watch", "-x", "build -p notes-server", "-x", "run -p notes-server"]
 

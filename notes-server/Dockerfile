@@ -24,14 +24,14 @@ RUN apt-get update && \
 # Leverage a bind mount to the src directory to avoid having to copy the
 # source code into the container. Once built, copy the executable to an
 # output directory before the cache mounted /app/target is unmounted.
-RUN --mount=type=bind,source=src,target=src \
-    --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
-    --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
-    --mount=type=bind,source=build.rs,target=build.rs \
-    --mount=type=bind,source=proto,target=proto \
+RUN --mount=type=bind,source=notes-server/src,target=/app/src \
+    --mount=type=bind,source=notes-server/Cargo.toml,target=/app/Cargo.toml \
+    --mount=type=bind,source=Cargo.lock,target=/app/Cargo.lock \
+    --mount=type=bind,source=notes-server/build.rs,target=/app/build.rs \
+    --mount=type=bind,source=proto,target=/proto \
     --mount=type=cache,target=/app/target/ \
     # --mount=type=cache,target=/usr/local/cargo/registry/ \
-    # --mount=type=bind,source=migrations,target=migrations \
+    # --mount=type=bind,source=notes-server/src/migrations,target=migrations \
     <<EOF
 set -e
 cargo build --locked --release
