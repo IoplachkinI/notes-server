@@ -4,7 +4,7 @@
 # Create a stage for building the application.
 
 ARG RUST_VERSION=1.91.1
-ARG APP_NAME=notes-server
+ARG APP_NAME=load-balancer
 FROM rust:${RUST_VERSION}-slim-bullseye AS build
 ARG APP_NAME
 WORKDIR /app
@@ -14,7 +14,6 @@ RUN apt-get update && \
     apt-get install -y \
     libssl-dev \
     pkg-config \
-    protobuf-compiler \
     && rm -rf /var/lib/apt/lists/*
 
 # Build the application.
@@ -24,12 +23,12 @@ RUN apt-get update && \
 # Leverage a bind mount to the src directory to avoid having to copy the
 # source code into the container. Once built, copy the executable to an
 # output directory before the cache mounted /app/target is unmounted.
-RUN --mount=type=bind,source=notes-server/src,target=/app/notes-server/src \
-    --mount=type=bind,source=notes-server/Cargo.toml,target=/app/notes-server/Cargo.toml \
-    --mount=type=bind,source=notes-server/build.rs,target=/app/notes-server/build.rs \
-    --mount=type=bind,source=grpc-client/Cargo.toml,target=/app/grpc-client/Cargo.toml \
-    --mount=type=bind,source=grpc-client/build.rs,target=/app/grpc-client/build.rs \
+RUN --mount=type=bind,source=load-balancer/src,target=/app/load-balancer/src \
     --mount=type=bind,source=load-balancer/Cargo.toml,target=/app/load-balancer/Cargo.toml \
+    --mount=type=bind,source=notes-server/Cargo.toml,target=/app/notes-server/Cargo.toml \
+    --mount=type=bind,source=grpc-client/Cargo.toml,target=/app/grpc-client/Cargo.toml \
+    --mount=type=bind,source=notes-server/build.rs,target=/app/notes-server/build.rs \
+    --mount=type=bind,source=grpc-client/build.rs,target=/app/grpc-client/build.rs \
     --mount=type=bind,source=Cargo.toml,target=/app/Cargo.toml \
     --mount=type=bind,source=Cargo.lock,target=/app/Cargo.lock \
     --mount=type=bind,source=proto,target=/app/proto \
@@ -37,11 +36,11 @@ RUN --mount=type=bind,source=notes-server/src,target=/app/notes-server/src \
     <<EOF
 set -e
 # Create dummy source files for other workspace members so cargo can validate them
-mkdir -p /app/grpc-client/src /app/load-balancer/src
+mkdir -p /app/notes-server/src /app/grpc-client/src
+echo "fn main() {}" > /app/notes-server/src/main.rs
 echo "fn main() {}" > /app/grpc-client/src/main.rs
-echo "fn main() {}" > /app/load-balancer/src/main.rs
 cargo build --locked --release -p $APP_NAME
-cp ./target/release/$APP_NAME /bin/server
+cp ./target/release/$APP_NAME /bin/load-balancer
 EOF
 
 ################################################################################
@@ -64,10 +63,15 @@ RUN adduser \
 USER appuser
 
 # Copy the executable from the "build" stage.
-COPY --from=build /bin/server /bin/
+COPY --from=build /bin/load-balancer /bin/
+
+# Copy config file (build context is parent directory)
+COPY --chown=appuser:appuser load-balancer/config.yaml /app/config.yaml
 
 # Expose the port that the application listens on.
-EXPOSE 8000
+EXPOSE 8080
 
 # What the container should run when it is started.
-CMD ["/bin/server"]
+WORKDIR /app
+CMD ["/bin/load-balancer"]
+

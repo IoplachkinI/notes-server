@@ -6,8 +6,8 @@ pub mod notes {
 }
 
 use notes::{
-    note_service_client::NoteServiceClient, CreateNoteRequest, DeleteNoteRequest,
-    GetAllNotesRequest, GetNoteRequest, UpdateNoteRequest,
+    CreateNoteRequest, DeleteNoteRequest, GetAllNotesRequest, GetNoteRequest, UpdateNoteRequest,
+    note_service_client::NoteServiceClient,
 };
 
 use serde_json::to_string_pretty;

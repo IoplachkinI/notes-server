@@ -17,22 +17,30 @@ RUN apt-get update && \
     protobuf-compiler \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy proto files to /proto (build.rs expects ../proto relative to /app)
-# Build context is parent directory (set in docker-compose.yml)
-COPY proto /proto
-
-# Copy source files
-COPY grpc-client/src ./src
-COPY grpc-client/Cargo.toml ./Cargo.toml
-COPY grpc-client/Cargo.lock ./Cargo.lock
-COPY grpc-client/build.rs ./build.rs
-
-# Build the application with cache mount for faster rebuilds
-RUN --mount=type=cache,target=/app/target/ \
-    --mount=type=cache,target=/usr/local/cargo/registry/ \
+# Build the application.
+# Leverage a cache mount to /usr/local/cargo/registry/
+# for downloaded dependencies and a cache mount to /app/target/ for
+# compiled dependencies which will speed up subsequent builds.
+# Leverage a bind mount to the src directory to avoid having to copy the
+# source code into the container. Once built, copy the executable to an
+# output directory before the cache mounted /app/target is unmounted.
+RUN --mount=type=bind,source=grpc-client/src,target=/app/grpc-client/src \
+    --mount=type=bind,source=grpc-client/Cargo.toml,target=/app/grpc-client/Cargo.toml \
+    --mount=type=bind,source=grpc-client/build.rs,target=/app/grpc-client/build.rs \
+    --mount=type=bind,source=notes-server/Cargo.toml,target=/app/notes-server/Cargo.toml \
+    --mount=type=bind,source=notes-server/build.rs,target=/app/notes-server/build.rs \
+    --mount=type=bind,source=load-balancer/Cargo.toml,target=/app/load-balancer/Cargo.toml \
+    --mount=type=bind,source=Cargo.toml,target=/app/Cargo.toml \
+    --mount=type=bind,source=Cargo.lock,target=/app/Cargo.lock \
+    --mount=type=bind,source=proto,target=/app/proto \
+    --mount=type=cache,target=/app/target/ \
     <<EOF
 set -e
-cargo build --locked --release
+# Create dummy source files for other workspace members so cargo can validate them
+mkdir -p /app/notes-server/src /app/load-balancer/src
+echo "fn main() {}" > /app/notes-server/src/main.rs
+echo "fn main() {}" > /app/load-balancer/src/main.rs
+cargo build --locked --release -p $APP_NAME
 cp ./target/release/$APP_NAME /bin/client
 EOF
 

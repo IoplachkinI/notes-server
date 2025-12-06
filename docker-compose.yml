@@ -5,19 +5,37 @@ services:
     ports:
       - 4000:80
     volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./notes-server/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - server1
       - server2
       - server3
     profiles:
-      - release
+      - release-nginx
+    restart: unless-stopped
+
+  # Custom Rust load balancer
+  custom-balancer:
+    build:
+      context: .
+      dockerfile: load-balancer/Dockerfile
+      target: final
+    ports:
+      - 4000:8080
+    volumes:
+      - ./load-balancer/config.yaml:/app/config.yaml:ro
+    depends_on:
+      - server1
+      - server2
+      - server3
+    profiles:
+      - release-custom-balancer
     restart: unless-stopped
 
   # Server instance 1
   server1:
     build:
-      context: ..
+      context: .
       dockerfile: notes-server/Dockerfile
       target: final
     environment:
@@ -27,13 +45,14 @@ services:
       db:
         condition: service_healthy
     profiles:
-      - release
+      - release-nginx
+      - release-custom-balancer
     restart: unless-stopped
 
   # Server instance 2
   server2:
     build:
-      context: ..
+      context: .
       dockerfile: notes-server/Dockerfile
       target: final
     environment:
@@ -43,13 +62,14 @@ services:
       db:
         condition: service_healthy
     profiles:
-      - release
+      - release-nginx
+      - release-custom-balancer
     restart: unless-stopped
 
   # Server instance 3
   server3:
     build:
-      context: ..
+      context: .
       dockerfile: notes-server/Dockerfile
       target: final
     environment:
@@ -59,12 +79,13 @@ services:
       db:
         condition: service_healthy
     profiles:
-      - release
+      - release-nginx
+      - release-custom-balancer
     restart: unless-stopped
 
   server-dev:
     build:
-      context: ..
+      context: .
       dockerfile: notes-server/Dockerfile.dev
     ports:
       - 4000:8000
@@ -73,12 +94,12 @@ services:
       - PG_DSN=postgresql://postgres:postgres@db:5432/postgres
       - RUST_LOG=debug
     volumes:
-      - ../grpc-client:/app/grpc-client:ro
-      - ../notes-server:/app/notes-server:ro
-      - ../proto:/app/proto:ro
-      - ../target:/app/target
-      - ../Cargo.lock:/app/Cargo.lock:ro
-      - ../Cargo.toml:/app/Cargo.toml:ro
+      - ./grpc-client:/app/grpc-client:ro
+      - ./notes-server:/app/notes-server:ro
+      - ./proto:/app/proto:ro
+      - ./target:/app/target
+      - ./Cargo.lock:/app/Cargo.lock:ro
+      - ./Cargo.toml:/app/Cargo.toml:ro
       - cargo-cache:/usr/local/cargo/registry
     depends_on:
       db:
@@ -108,8 +129,10 @@ services:
       retries: 5
     profiles:
       - debug
-      - release
+      - release-nginx
+      - release-custom-balancer
 volumes:
   db-data: {}
   target:
-  cargo-cache:
+  cargo-cache: {}
+

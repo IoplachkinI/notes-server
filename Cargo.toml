@@ -2,6 +2,6 @@
 members = [
     "notes-server",
     "grpc-client"
-]
+, "load-balancer"]
 resolver = "2"
 

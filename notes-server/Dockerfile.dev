@@ -23,13 +23,15 @@ COPY Cargo.toml Cargo.lock ./
 # Copy workspace member Cargo.toml files
 COPY notes-server/Cargo.toml ./notes-server/
 COPY grpc-client/Cargo.toml ./grpc-client/
+COPY load-balancer/Cargo.toml ./load-balancer/
 
 # Pre-build dependencies (this layer will be cached)
-RUN mkdir -p notes-server/src grpc-client/src && \
+RUN mkdir -p notes-server/src grpc-client/src load-balancer/src && \
     echo "fn main() {}" > notes-server/src/main.rs && \
     echo "fn main() {}" > grpc-client/src/main.rs && \
+    echo "fn main() {}" > load-balancer/src/main.rs && \
     cargo build -p notes-server && \
-    rm -rf notes-server/src grpc-client/src
+    rm -rf notes-server/src grpc-client/src load-balancer/src
 
 # The source code will be mounted as a volume
 # Default command runs cargo watch

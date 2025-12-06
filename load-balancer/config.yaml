@@ -1,0 +1,9 @@
+urls:
+  - "http://server1:8000"
+  - "http://server2:8000"
+  - "http://server3:8000"
+port: 8080
+strategy: "random"
+health_check_interval: "2s"
+health_check_time_limit: "10s"
+connection_timeout: "2s"

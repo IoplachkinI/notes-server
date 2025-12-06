@@ -8,7 +8,7 @@ use axum::{
     Router,
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::{delete, get, post, put},
+    routing::{any, delete, get, post, put},
 };
 
 use std::{env, sync::Arc};
@@ -73,6 +73,7 @@ async fn main() {
         .layer(TraceLayer::new_for_http());
 
     let router = Router::new()
+        .route("/", any(root))
         .nest("/rest", rest_router)
         .nest("/soap", soap_router);
 
