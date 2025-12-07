@@ -213,7 +213,6 @@ services:
       - ./notes-server:/app/notes-server:ro
       - ./load-balancer:/app/load-balancer:ro
       - ./proto:/app/proto:ro
-      - ./target:/app/target
       - ./Cargo.lock:/app/Cargo.lock:ro
       - ./Cargo.toml:/app/Cargo.toml:ro
       - cargo-cache:/usr/local/cargo/registry

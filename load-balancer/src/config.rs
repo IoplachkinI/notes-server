@@ -21,4 +21,6 @@ pub struct Config {
     pub health_check_time_limit: Duration,
     #[serde(with = "humantime_serde")]
     pub connection_timeout: Duration,
+    #[serde(default)]
+    pub max_retries: Option<u32>, // None means try all alive servers
 }

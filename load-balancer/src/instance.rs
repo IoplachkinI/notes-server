@@ -38,6 +38,17 @@ impl Instance {
         format!("{}:{}", self.base_url, self.grpc_port)
     }
 
+    fn _handle_health_check_error(&mut self) {
+        if let Some(lh) = self.last_healthy
+            && Instant::now().duration_since(lh) > self.health_check_time_limit
+        {
+            if self.is_alive {
+                tracing::warn!("Lost connection to server {}", self.get_rest_url());
+            }
+            self.is_alive = false;
+        }
+    }
+
     pub async fn health_check(&mut self) {
         let client = Client::builder()
             .timeout(self.con_timeout)
@@ -49,11 +60,7 @@ impl Instance {
         match client.get(&health_url).send().await {
             Ok(response) => {
                 if !response.status().is_success() {
-                    tracing::warn!(
-                        "Server {} responded but the status code is {}",
-                        rest_url,
-                        response.status().as_str()
-                    );
+                    self._handle_health_check_error();
                     return;
                 }
                 if !self.is_alive {
@@ -62,16 +69,7 @@ impl Instance {
                 self.is_alive = true;
                 self.last_healthy = Some(Instant::now())
             }
-            Err(_) => {
-                if let Some(lh) = self.last_healthy
-                    && Instant::now().duration_since(lh) > self.health_check_time_limit
-                {
-                    if self.is_alive {
-                        tracing::warn!("Lost connection to server {}", rest_url);
-                    }
-                    self.is_alive = false;
-                }
-            }
+            Err(_) => self._handle_health_check_error(),
         }
     }
 
