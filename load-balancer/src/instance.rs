@@ -44,7 +44,11 @@ impl Instance {
                         "Server {} responded but the status code is {}",
                         self.url,
                         response.status().as_str()
-                    )
+                    );
+                    return;
+                }
+                if !self.is_alive {
+                    tracing::info!("Restored connection to server {}", self.url);
                 }
                 self.is_alive = true;
                 self.last_healthy = Some(Instant::now())
@@ -53,7 +57,9 @@ impl Instance {
                 if let Some(lh) = self.last_healthy
                     && Instant::now().duration_since(lh) > self.health_check_time_limit
                 {
-                    tracing::warn!("Server {} is not responding", self.url);
+                    if self.is_alive {
+                        tracing::warn!("Lost connection to server {}", self.url);
+                    }
                     self.is_alive = false;
                 }
             }

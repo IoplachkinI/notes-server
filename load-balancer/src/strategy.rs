@@ -28,7 +28,11 @@ impl RoundRobin {
 
 impl BalancingStrategy for RoundRobin {
     fn select_instance(&mut self, snapshots: &[InstanceSnapshot]) -> usize {
-        let result = self.idx_to_pick;
+        if snapshots.is_empty() {
+            return 0;
+        }
+
+        let result = self.idx_to_pick % snapshots.len();
 
         self.idx_to_pick = (self.idx_to_pick + 1) % snapshots.len();
 

@@ -78,6 +78,15 @@ impl LoadBalancer {
 
         let selected_idx_in_snapshot = self.strategy.lock().await.select_instance(&snapshots);
 
+        if selected_idx_in_snapshot >= alive_snapshots.len() {
+            tracing::error!(
+                "Strategy returned invalid index {} for {} alive instances",
+                selected_idx_in_snapshot,
+                alive_snapshots.len()
+            );
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+
         let actual_idx = alive_snapshots[selected_idx_in_snapshot].0;
         let instance_url = instances[actual_idx].get_url();
 
