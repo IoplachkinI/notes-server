@@ -3,7 +3,7 @@ urls:
   - "http://server2:8000"
   - "http://server3:8000"
 port: 8080
-strategy: "random"
+strategy: "least_connections"
 health_check_interval: "2s"
 health_check_time_limit: "10s"
 connection_timeout: "2s"

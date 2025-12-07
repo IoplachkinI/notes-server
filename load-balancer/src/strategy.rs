@@ -1,14 +1,17 @@
-use std::sync::atomic::Ordering;
-
 use rand::{Rng, rng};
 
-use crate::instance::Instance;
+/// Lightweight snapshot of instance state for strategy selection
+#[derive(Debug, Clone, Copy)]
+pub struct InstanceSnapshot {
+    pub con_count: u32,
+    pub is_alive: bool,
+}
 
 pub trait BalancingStrategy: Send + Sync {
-    /// `select_instance` recieves a slice of Instances that are currently alive
-    /// (a snapshot of the system) and outputs a selected one
-    /// Returns `None` if the slice is empty
-    fn select_instance(&mut self, instances: &[Instance]) -> usize;
+    /// `select_instance` receives a slice of instance snapshots that are currently alive
+    /// (a snapshot of the system) and outputs a selected index
+    /// Returns the index of the selected instance
+    fn select_instance(&mut self, snapshots: &[InstanceSnapshot]) -> usize;
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -24,10 +27,10 @@ impl RoundRobin {
 }
 
 impl BalancingStrategy for RoundRobin {
-    fn select_instance(&mut self, instances: &[Instance]) -> usize {
+    fn select_instance(&mut self, snapshots: &[InstanceSnapshot]) -> usize {
         let result = self.idx_to_pick;
 
-        self.idx_to_pick = (self.idx_to_pick + 1) % instances.len();
+        self.idx_to_pick = (self.idx_to_pick + 1) % snapshots.len();
 
         result
     }
@@ -44,10 +47,10 @@ impl Random {
 }
 
 impl BalancingStrategy for Random {
-    fn select_instance(&mut self, instances: &[Instance]) -> usize {
+    fn select_instance(&mut self, snapshots: &[InstanceSnapshot]) -> usize {
         let mut rng = rng();
 
-        rng.random_range(0..instances.len())
+        rng.random_range(0..snapshots.len())
     }
 }
 
@@ -62,14 +65,13 @@ impl LeastConnections {
 }
 
 impl BalancingStrategy for LeastConnections {
-    fn select_instance(&mut self, instances: &[Instance]) -> usize {
+    fn select_instance(&mut self, snapshots: &[InstanceSnapshot]) -> usize {
         let mut least_connections: u32 = u32::MAX;
         let mut idx: usize = 0;
 
-        for (i, instance) in instances.iter().enumerate() {
-            if instance.is_alive() && instance.con_count.load(Ordering::Relaxed) < least_connections
-            {
-                least_connections = instance.con_count.load(Ordering::Relaxed);
+        for (i, snapshot) in snapshots.iter().enumerate() {
+            if snapshot.is_alive && snapshot.con_count < least_connections {
+                least_connections = snapshot.con_count;
                 idx = i;
             }
         }

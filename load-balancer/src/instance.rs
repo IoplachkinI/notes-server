@@ -1,6 +1,6 @@
 use crate::config::Config;
 use reqwest::Client;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::AtomicU32;
 use std::time::{Duration, Instant};
 
 #[derive(Debug)]
@@ -12,20 +12,6 @@ pub struct Instance {
     pub con_count: AtomicU32,
     is_alive: bool,
     last_healthy: Option<Instant>,
-}
-
-impl Clone for Instance {
-    fn clone(&self) -> Self {
-        Self {
-            url: self.url.clone(),
-            con_timeout: self.con_timeout,
-            health_check_time_limit: self.con_timeout,
-
-            con_count: AtomicU32::new(self.con_count.load(Ordering::Relaxed)),
-            is_alive: self.is_alive,
-            last_healthy: self.last_healthy,
-        }
-    }
 }
 
 impl Instance {

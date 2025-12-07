@@ -1,10 +1,11 @@
 use crate::config::Config;
 use crate::instance::Instance;
-use crate::strategy;
+use crate::strategy::{self, InstanceSnapshot};
 use axum::extract::Request;
 use axum::http::StatusCode;
 use axum::response::Response;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 use tokio::sync::{Mutex, RwLock};
 
@@ -44,26 +45,47 @@ impl LoadBalancer {
 
     pub async fn forward_request(&self, request: Request) -> Result<Response, StatusCode> {
         let instances = self.instances.read().await;
-        let alive_instances: Vec<Instance> = instances
+        let alive_snapshots: Vec<(usize, InstanceSnapshot)> = instances
             .iter()
-            .filter_map(|i| match i.is_alive() {
-                true => Some(i.clone()),
-                false => None,
+            .enumerate()
+            .filter_map(|(idx, i)| {
+                if i.is_alive() {
+                    Some((
+                        idx,
+                        InstanceSnapshot {
+                            con_count: i.con_count.load(Ordering::Relaxed),
+                            is_alive: i.is_alive(),
+                        },
+                    ))
+                } else {
+                    None
+                }
             })
             .collect();
 
-        if alive_instances.is_empty() {
+        if alive_snapshots.is_empty() {
             return Err(StatusCode::SERVICE_UNAVAILABLE);
         }
 
-        let instance = alive_instances[self
-            .strategy
-            .lock()
-            .await
-            .select_instance(alive_instances.as_slice())]
-        .clone();
+        let snapshots: Vec<InstanceSnapshot> = alive_snapshots.iter().map(|(_, s)| *s).collect();
 
-        tracing::info!("Redirecting request to {}", instance.get_url());
+        let selected_idx_in_snapshot = self.strategy.lock().await.select_instance(&snapshots);
+
+        let actual_idx = alive_snapshots[selected_idx_in_snapshot].0;
+        let instance_url = instances[actual_idx].get_url();
+
+        let con_count = instances[actual_idx]
+            .con_count
+            .fetch_add(1, Ordering::Relaxed)
+            + 1;
+
+        drop(instances);
+
+        tracing::info!(
+            "Redirecting request to {} (connections: {})",
+            instance_url,
+            con_count
+        );
 
         let client = reqwest::Client::builder()
             .timeout(self.con_timeout)
@@ -72,7 +94,7 @@ impl LoadBalancer {
 
         let url = format!(
             "{}{}",
-            instance.get_url(),
+            instance_url,
             request
                 .uri()
                 .path_and_query()
@@ -80,7 +102,7 @@ impl LoadBalancer {
                 .unwrap_or("")
         );
 
-        let response = tokio::time::timeout(
+        let result = tokio::time::timeout(
             self.con_timeout,
             client
                 .request(request.method().clone(), &url)
@@ -92,9 +114,17 @@ impl LoadBalancer {
                 )
                 .send(),
         )
-        .await
-        .map_err(|_| StatusCode::GATEWAY_TIMEOUT)?
-        .map_err(|_| StatusCode::BAD_GATEWAY)?;
+        .await;
+
+        let instances = self.instances.read().await;
+        instances[actual_idx]
+            .con_count
+            .fetch_sub(1, Ordering::Relaxed);
+        drop(instances);
+
+        let response = result
+            .map_err(|_| StatusCode::GATEWAY_TIMEOUT)?
+            .map_err(|_| StatusCode::BAD_GATEWAY)?;
 
         let status = response.status();
         let headers = response.headers().clone();

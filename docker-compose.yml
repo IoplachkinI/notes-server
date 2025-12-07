@@ -1,6 +1,7 @@
 services:
   # Nginx load balancer
   nginx:
+    container_name: notes-nginx
     image: nginx:alpine
     ports:
       - 4000:80
@@ -16,6 +17,7 @@ services:
 
   # Custom Rust load balancer
   custom-balancer:
+    container_name: notes-custom-balancer
     build:
       context: .
       dockerfile: load-balancer/Dockerfile
@@ -34,6 +36,7 @@ services:
 
   # Server instance 1
   server1:
+    container_name: notes-server-1
     build:
       context: .
       dockerfile: notes-server/Dockerfile
@@ -51,6 +54,7 @@ services:
 
   # Server instance 2
   server2:
+    container_name: notes-server-2
     build:
       context: .
       dockerfile: notes-server/Dockerfile
@@ -68,6 +72,7 @@ services:
 
   # Server instance 3
   server3:
+    container_name: notes-server-3
     build:
       context: .
       dockerfile: notes-server/Dockerfile
@@ -84,6 +89,7 @@ services:
     restart: unless-stopped
 
   server-dev:
+    container_name: notes-server-dev
     build:
       context: .
       dockerfile: notes-server/Dockerfile.dev
@@ -107,6 +113,7 @@ services:
     profiles:
       - debug
   db:
+    container_name: notes-db
     image: postgres:17
     restart: unless-stopped
     user: postgres
