@@ -1,17 +1,19 @@
-instances:
-  - base_url: "http://server1"
-    rest_port: 8000
-    grpc_port: 5000
+instances: # Серверы, находящиеся в подчинении балансировщика
+  - base_url: "http://server1" # Базовый URL сервера
+    rest_port: 8000 # REST порт сервера
+    grpc_port: 5000 # gRPC порт сервера
   - base_url: "http://server2"
     rest_port: 8000
     grpc_port: 5000
   - base_url: "http://server3"
     rest_port: 8000
     grpc_port: 5000
-rest_port: 8080
-grpc_port: 5000
-strategy: "least_connections"
-health_check_interval: "2s"
-health_check_time_limit: "10s"
-connection_timeout: "2s"
-max_retries: 3
+rest_port: 8080 # REST порт балансировщика, который торчит наружу
+grpc_port: 5000 # gRPC порт балансировщика, который торчит наружу
+strategy: "least_connections" # Стратегия балансировки
+# Поддерживаемые стратегии: round_robin, random, least_connections
+health_check_interval: "2s" # Интервал проверки серверов
+health_check_time_limit: "10s" # Время отсутствия подключения через которое сервер считается мертвым
+connection_timeout: "2s" # Таймаут на все запросы
+max_retries: 3 # Максимальное количество раз, которое балансировщик пытается перенаправить запрос
+# другому серверу, если выбранный еще считается живым, но вернул 5xx ошибку
