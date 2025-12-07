@@ -57,6 +57,7 @@ async fn main() {
     }
 
     let router = Router::new()
+        .route("/", any(root))
         .route("/{*path}", any(proxy_handler))
         .with_state(balancer)
         .layer(TraceLayer::new_for_http());
@@ -69,4 +70,28 @@ async fn main() {
     tracing::info!("Load balancer listening on {}", url);
 
     axum::serve(listener, router).await.expect("Server failed");
+}
+
+#[debug_handler]
+async fn root(State(balancer): State<LoadBalancer>) -> Response {
+    let (alive_count, total_count) = balancer.get_health_status().await;
+
+    let status = if alive_count > 0 {
+        axum::http::StatusCode::OK
+    } else {
+        axum::http::StatusCode::SERVICE_UNAVAILABLE
+    };
+
+    let body = format!(
+        r#"{{"status":"{}","alive_instances":{},"total_instances":{}}}"#,
+        if alive_count > 0 {
+            "healthy"
+        } else {
+            "unhealthy"
+        },
+        alive_count,
+        total_count
+    );
+
+    (status, body).into_response()
 }

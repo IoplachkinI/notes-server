@@ -43,6 +43,13 @@ impl LoadBalancer {
         }
     }
 
+    pub async fn get_health_status(&self) -> (usize, usize) {
+        let instances = self.instances.read().await;
+        let alive_count = instances.iter().filter(|i| i.is_alive()).count();
+        let total_count = instances.len();
+        (alive_count, total_count)
+    }
+
     pub async fn forward_request(&self, request: Request) -> Result<Response, StatusCode> {
         let instances = self.instances.read().await;
         let alive_snapshots: Vec<(usize, InstanceSnapshot)> = instances
@@ -81,7 +88,7 @@ impl LoadBalancer {
 
         drop(instances);
 
-        tracing::info!(
+        tracing::debug!(
             "Redirecting request to {} (connections: {})",
             instance_url,
             con_count

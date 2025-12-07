@@ -24,6 +24,8 @@ services:
       target: final
     ports:
       - 4000:8080
+    environment:
+      - RUST_LOG=debug
     volumes:
       - ./load-balancer/config.yaml:/app/config.yaml:ro
     depends_on:
@@ -50,6 +52,7 @@ services:
     profiles:
       - release-nginx
       - release-custom-balancer
+      - release-multi-tier
     restart: unless-stopped
 
   # Server instance 2
@@ -68,6 +71,7 @@ services:
     profiles:
       - release-nginx
       - release-custom-balancer
+      - release-multi-tier
     restart: unless-stopped
 
   # Server instance 3
@@ -86,6 +90,120 @@ services:
     profiles:
       - release-nginx
       - release-custom-balancer
+      - release-multi-tier
+    restart: unless-stopped
+
+  # Server instance 4
+  server4:
+    container_name: notes-server-4
+    build:
+      context: .
+      dockerfile: notes-server/Dockerfile
+      target: final
+    environment:
+      - PG_DSN=postgresql://postgres:postgres@db:5432/postgres
+      - RUST_LOG=debug
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles:
+      - release-multi-tier
+    restart: unless-stopped
+
+  # Server instance 5
+  server5:
+    container_name: notes-server-5
+    build:
+      context: .
+      dockerfile: notes-server/Dockerfile
+      target: final
+    environment:
+      - PG_DSN=postgresql://postgres:postgres@db:5432/postgres
+      - RUST_LOG=debug
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles:
+      - release-multi-tier
+    restart: unless-stopped
+
+  # Server instance 6
+  server6:
+    container_name: notes-server-6
+    build:
+      context: .
+      dockerfile: notes-server/Dockerfile
+      target: final
+    environment:
+      - PG_DSN=postgresql://postgres:postgres@db:5432/postgres
+      - RUST_LOG=debug
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles:
+      - release-multi-tier
+    restart: unless-stopped
+
+  # Secondary load balancer 1 (handles server1, server2, server3)
+  secondary-lb-1:
+    container_name: notes-secondary-lb-1
+    build:
+      context: .
+      dockerfile: load-balancer/Dockerfile
+      target: final
+    expose:
+      - "8080"
+    # environment:
+      # - RUST_LOG=debug
+    volumes:
+      - ./load-balancer/configs/config.secondary.1.yaml:/app/config.yaml:ro
+    depends_on:
+      - server1
+      - server2
+      - server3
+    profiles:
+      - release-multi-tier
+    restart: unless-stopped
+
+  # Secondary load balancer 2 (handles server4, server5, server6)
+  secondary-lb-2:
+    container_name: notes-secondary-lb-2
+    build:
+      context: .
+      dockerfile: load-balancer/Dockerfile
+      target: final
+    expose:
+      - "8080"
+    # environment:
+      # - RUST_LOG=debug
+    volumes:
+      - ./load-balancer/configs/config.secondary.2.yaml:/app/config.yaml:ro
+    depends_on:
+      - server4
+      - server5
+      - server6
+    profiles:
+      - release-multi-tier
+    restart: unless-stopped
+
+  # Primary load balancer (handles secondary-lb-1 and secondary-lb-2)
+  primary-lb:
+    container_name: notes-primary-lb
+    build:
+      context: .
+      dockerfile: load-balancer/Dockerfile
+      target: final
+    ports:
+      - 4000:8080
+    # environment:
+      # - RUST_LOG=debug
+    volumes:
+      - ./load-balancer/configs/config.primary.yaml:/app/config.yaml:ro
+    depends_on:
+      - secondary-lb-1
+      - secondary-lb-2
+    profiles:
+      - release-multi-tier
     restart: unless-stopped
 
   server-dev:
@@ -138,6 +256,7 @@ services:
       - debug
       - release-nginx
       - release-custom-balancer
+      - release-multi-tier
 volumes:
   db-data: {}
   target:

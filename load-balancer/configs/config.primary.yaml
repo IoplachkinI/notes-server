@@ -1,0 +1,8 @@
+urls:
+  - "http://secondary-lb-1:8080"
+  - "http://secondary-lb-2:8080"
+port: 8080
+strategy: "round_robin"
+health_check_interval: "2s"
+health_check_time_limit: "10s"
+connection_timeout: "2s"
