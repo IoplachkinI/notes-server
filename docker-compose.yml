@@ -23,8 +23,8 @@ services:
     ports:
       - 4000:8080
       - 5000:5000
-    environment:
-      - RUST_LOG=debug
+    # environment:
+    #   - RUST_LOG=debug
     volumes:
       - ./load-balancer/config.yaml:/app/config.yaml:ro
     depends_on:

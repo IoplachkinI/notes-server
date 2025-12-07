@@ -1,5 +1,5 @@
 mycurl() {
-  curl "localhost:4000/rest/notes" -s -o /dev/null 2> /dev/null &
+  curl "localhost:4000/notes" -s -o /dev/null 2> /dev/null &
 }
 export -f mycurl
 
