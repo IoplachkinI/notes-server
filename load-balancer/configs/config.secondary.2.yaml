@@ -1,8 +1,15 @@
-urls:
-  - "http://server4:8000"
-  - "http://server5:8000"
-  - "http://server6:8000"
-port: 8080
+instances:
+  - base_url: "http://server4"
+    rest_port: 8000
+    grpc_port: 50051
+  - base_url: "http://server5"
+    rest_port: 8000
+    grpc_port: 50051
+  - base_url: "http://server6"
+    rest_port: 8000
+    grpc_port: 50051
+rest_port: 8080
+grpc_port: 5000
 strategy: "round_robin"
 health_check_interval: "2s"
 health_check_time_limit: "10s"

@@ -1,5 +1,4 @@
 services:
-  # Nginx load balancer
   nginx:
     container_name: notes-nginx
     image: nginx:alpine
@@ -15,7 +14,6 @@ services:
       - release-nginx
     restart: unless-stopped
 
-  # Custom Rust load balancer
   custom-balancer:
     container_name: notes-custom-balancer
     build:
@@ -24,6 +22,7 @@ services:
       target: final
     ports:
       - 4000:8080
+      - 5000:5000
     environment:
       - RUST_LOG=debug
     volumes:
@@ -36,7 +35,6 @@ services:
       - release-custom-balancer
     restart: unless-stopped
 
-  # Server instance 1
   server1:
     container_name: notes-server-1
     build:
@@ -55,7 +53,6 @@ services:
       - release-multi-tier
     restart: unless-stopped
 
-  # Server instance 2
   server2:
     container_name: notes-server-2
     build:
@@ -74,7 +71,6 @@ services:
       - release-multi-tier
     restart: unless-stopped
 
-  # Server instance 3
   server3:
     container_name: notes-server-3
     build:
@@ -93,7 +89,6 @@ services:
       - release-multi-tier
     restart: unless-stopped
 
-  # Server instance 4
   server4:
     container_name: notes-server-4
     build:
@@ -110,7 +105,6 @@ services:
       - release-multi-tier
     restart: unless-stopped
 
-  # Server instance 5
   server5:
     container_name: notes-server-5
     build:
@@ -127,7 +121,6 @@ services:
       - release-multi-tier
     restart: unless-stopped
 
-  # Server instance 6
   server6:
     container_name: notes-server-6
     build:
@@ -144,7 +137,6 @@ services:
       - release-multi-tier
     restart: unless-stopped
 
-  # Secondary load balancer 1 (handles server1, server2, server3)
   secondary-lb-1:
     container_name: notes-secondary-lb-1
     build:
@@ -165,7 +157,6 @@ services:
       - release-multi-tier
     restart: unless-stopped
 
-  # Secondary load balancer 2 (handles server4, server5, server6)
   secondary-lb-2:
     container_name: notes-secondary-lb-2
     build:
@@ -186,7 +177,6 @@ services:
       - release-multi-tier
     restart: unless-stopped
 
-  # Primary load balancer (handles secondary-lb-1 and secondary-lb-2)
   primary-lb:
     container_name: notes-primary-lb
     build:
@@ -195,6 +185,7 @@ services:
       target: final
     ports:
       - 4000:8080
+      - 5000:5000
     # environment:
       # - RUST_LOG=debug
     volumes:
@@ -213,13 +204,14 @@ services:
       dockerfile: notes-server/Dockerfile.dev
     ports:
       - 4000:8000
-      - 5000:50051
+      - 5000:5000
     environment:
       - PG_DSN=postgresql://postgres:postgres@db:5432/postgres
       - RUST_LOG=debug
     volumes:
       - ./grpc-client:/app/grpc-client:ro
       - ./notes-server:/app/notes-server:ro
+      - ./load-balancer:/app/load-balancer:ro
       - ./proto:/app/proto:ro
       - ./target:/app/target
       - ./Cargo.lock:/app/Cargo.lock:ro

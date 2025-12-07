@@ -88,7 +88,7 @@ impl LoadBalancer {
         }
 
         let actual_idx = alive_snapshots[selected_idx_in_snapshot].0;
-        let instance_url = instances[actual_idx].get_url();
+        let instance_url = instances[actual_idx].get_rest_url();
 
         let con_count = instances[actual_idx]
             .con_count
@@ -97,7 +97,7 @@ impl LoadBalancer {
 
         drop(instances);
 
-        tracing::debug!(
+        tracing::info!(
             "Redirecting request to {} (connections: {})",
             instance_url,
             con_count
@@ -117,6 +117,118 @@ impl LoadBalancer {
                 .map(|s| s.as_str())
                 .unwrap_or("")
         );
+
+        let result = tokio::time::timeout(
+            self.con_timeout,
+            client
+                .request(request.method().clone(), &url)
+                .headers(request.headers().clone())
+                .body(
+                    axum::body::to_bytes(request.into_body(), usize::MAX)
+                        .await
+                        .map_err(|_| StatusCode::BAD_REQUEST)?,
+                )
+                .send(),
+        )
+        .await;
+
+        let instances = self.instances.read().await;
+        instances[actual_idx]
+            .con_count
+            .fetch_sub(1, Ordering::Relaxed);
+        drop(instances);
+
+        let response = result
+            .map_err(|_| StatusCode::GATEWAY_TIMEOUT)?
+            .map_err(|_| StatusCode::BAD_GATEWAY)?;
+
+        let status = response.status();
+        let headers = response.headers().clone();
+        let body_bytes = response
+            .bytes()
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+        let mut axum_response = Response::builder()
+            .status(status)
+            .body(axum::body::Body::from(body_bytes))
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+        *axum_response.headers_mut() = headers;
+
+        Ok(axum_response)
+    }
+
+    pub async fn forward_grpc_request(
+        &self,
+        request: axum::extract::Request,
+    ) -> Result<axum::response::Response, StatusCode> {
+        let instances = self.instances.read().await;
+        let alive_snapshots: Vec<(usize, InstanceSnapshot)> = instances
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, i)| {
+                if i.is_alive() {
+                    Some((
+                        idx,
+                        InstanceSnapshot {
+                            con_count: i.con_count.load(Ordering::Relaxed),
+                            is_alive: i.is_alive(),
+                        },
+                    ))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        if alive_snapshots.is_empty() {
+            return Err(StatusCode::SERVICE_UNAVAILABLE);
+        }
+
+        let snapshots: Vec<InstanceSnapshot> = alive_snapshots.iter().map(|(_, s)| *s).collect();
+
+        let selected_idx_in_snapshot = self.strategy.lock().await.select_instance(&snapshots);
+
+        if selected_idx_in_snapshot >= alive_snapshots.len() {
+            tracing::error!(
+                "Strategy returned invalid index {} for {} alive instances",
+                selected_idx_in_snapshot,
+                alive_snapshots.len()
+            );
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+
+        let actual_idx = alive_snapshots[selected_idx_in_snapshot].0;
+        let grpc_url = instances[actual_idx].get_grpc_url();
+
+        let con_count = instances[actual_idx]
+            .con_count
+            .fetch_add(1, Ordering::Relaxed)
+            + 1;
+
+        drop(instances);
+
+        tracing::info!(
+            "Redirecting gRPC request to {} (connections: {})",
+            grpc_url,
+            con_count
+        );
+        let url = format!(
+            "{}{}",
+            grpc_url,
+            request
+                .uri()
+                .path_and_query()
+                .map(|s| s.as_str())
+                .unwrap_or("")
+        );
+
+        let client = reqwest::Client::builder()
+            .http2_prior_knowledge()
+            .timeout(self.con_timeout)
+            .build()
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
         let result = tokio::time::timeout(
             self.con_timeout,

@@ -26,6 +26,14 @@ async fn proxy_handler(State(balancer): State<LoadBalancer>, request: Request) -
     }
 }
 
+#[debug_handler]
+async fn grpc_proxy_handler(State(balancer): State<LoadBalancer>, request: Request) -> Response {
+    match balancer.forward_grpc_request(request).await {
+        Ok(response) => response,
+        Err(status) => (status, "Service unavailable (no alive servers)").into_response(),
+    }
+}
+
 fn load_config(path: &str) -> Result<Config, Box<dyn std::error::Error>> {
     let contents = fs::read_to_string(path)?;
     let config: Config = serde_yaml::from_str(&contents)?;
@@ -41,10 +49,10 @@ async fn main() {
 
     let mut instances_vec: Vec<Instance> = Vec::new();
 
-    tracing::info!("Configured upstreams: {:?}", cfg.urls);
+    tracing::info!("Configured upstreams: {:?}", cfg.instances);
 
-    for url in cfg.urls.iter() {
-        instances_vec.push(Instance::new(url.to_string(), &cfg));
+    for instance_config in cfg.instances.iter() {
+        instances_vec.push(Instance::new(instance_config, &cfg));
     }
 
     let balancer = LoadBalancer::new(Arc::new(RwLock::new(instances_vec)), &cfg);
@@ -59,17 +67,42 @@ async fn main() {
     let router = Router::new()
         .route("/", any(root))
         .route("/{*path}", any(proxy_handler))
+        .with_state(balancer.clone())
+        .layer(TraceLayer::new_for_http());
+
+    let grpc_router = Router::new()
+        .route("/{*path}", any(grpc_proxy_handler))
         .with_state(balancer)
         .layer(TraceLayer::new_for_http());
 
-    let url = format!("0.0.0.0:{}", cfg.port);
+    let url = format!("0.0.0.0:{}", cfg.rest_port);
     let listener = TcpListener::bind(url.clone())
         .await
         .expect("Failed to bind to address");
 
-    tracing::info!("Load balancer listening on {}", url);
+    let grpc_url = format!("0.0.0.0:{}", cfg.grpc_port);
+    let grpc_listener = TcpListener::bind(grpc_url.clone())
+        .await
+        .expect("Failed to bind to gRPC address");
 
-    axum::serve(listener, router).await.expect("Server failed");
+    tracing::info!("HTTP Load balancer listening on {}", url);
+    tracing::info!("gRPC Load balancer listening on {}", grpc_url);
+
+    // Run both servers concurrently
+    tokio::select! {
+        result = axum::serve(listener, router) => {
+            if let Err(e) = result {
+                tracing::error!("HTTP server error: {e}");
+                panic!("failed to start HTTP server: {e}");
+            }
+        }
+        result = axum::serve(grpc_listener, grpc_router) => {
+            if let Err(e) = result {
+                tracing::error!("gRPC server error: {e}");
+                panic!("failed to start gRPC server: {e}");
+            }
+        }
+    }
 }
 
 #[debug_handler]

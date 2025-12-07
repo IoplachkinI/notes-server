@@ -1,7 +1,12 @@
-urls:
-  - "http://secondary-lb-1:8080"
-  - "http://secondary-lb-2:8080"
-port: 8080
+instances:
+  - base_url: "http://secondary-lb-1"
+    rest_port: 8080
+    grpc_port: 5000
+  - base_url: "http://secondary-lb-2"
+    rest_port: 8080
+    grpc_port: 5000
+rest_port: 8080
+grpc_port: 5000
 strategy: "round_robin"
 health_check_interval: "2s"
 health_check_time_limit: "10s"

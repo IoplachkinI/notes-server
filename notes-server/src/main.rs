@@ -17,6 +17,7 @@ use handlers::rest;
 use repository::Repository;
 
 use tower_http::trace::TraceLayer;
+use tracing::Span;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -50,7 +51,6 @@ async fn main() {
 
     // REST router config
     let rest_router = Router::new()
-        .route("/", get(root))
         .route("/notes", post(rest::create_note))
         .route("/notes/{id}", put(rest::update_note))
         .route("/notes/{id}", delete(rest::delete_note))
@@ -74,7 +74,7 @@ async fn main() {
 
     let router = Router::new()
         .route("/", any(root))
-        .nest("/rest", rest_router)
+        .merge(rest_router)
         .nest("/soap", soap_router);
 
     let http_listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();

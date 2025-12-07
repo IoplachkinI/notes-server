@@ -2,13 +2,18 @@ use std::time::Duration;
 
 use serde::Deserialize;
 
-use serde_with::serde_as;
+#[derive(Debug, Deserialize, Clone)]
+pub struct InstanceConfig {
+    pub base_url: String,
+    pub rest_port: u16,
+    pub grpc_port: u16,
+}
 
-#[serde_as]
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    pub urls: Vec<String>,
-    pub port: u32,
+    pub instances: Vec<InstanceConfig>,
+    pub rest_port: u32,
+    pub grpc_port: u32,
     pub strategy: String,
     #[serde(with = "humantime_serde")]
     pub health_check_interval: Duration,
