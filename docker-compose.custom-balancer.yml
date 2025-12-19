@@ -1,0 +1,91 @@
+services:
+  db:
+    container_name: notes-db
+    image: postgres:17
+    restart: unless-stopped
+    user: postgres
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    expose:
+      - 5432
+    ports:
+      - 5434:5432
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  server1:
+    container_name: notes-server-1
+    build:
+      context: .
+      dockerfile: notes-server/Dockerfile
+      target: final
+    environment:
+      - PG_DSN=postgresql://postgres:postgres@db:5432/postgres
+      - RUST_LOG=debug
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  server2:
+    container_name: notes-server-2
+    build:
+      context: .
+      dockerfile: notes-server/Dockerfile
+      target: final
+    environment:
+      - PG_DSN=postgresql://postgres:postgres@db:5432/postgres
+      - RUST_LOG=debug
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  server3:
+    container_name: notes-server-3
+    build:
+      context: .
+      dockerfile: notes-server/Dockerfile
+      target: final
+    environment:
+      - PG_DSN=postgresql://postgres:postgres@db:5432/postgres
+      - RUST_LOG=debug
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  custom-balancer:
+    container_name: notes-custom-balancer
+    build:
+      context: .
+      dockerfile: load-balancer/Dockerfile
+      target: final
+    ports:
+      - 4000:8080
+      - 5000:5000
+    # environment:
+    #   - RUST_LOG=debug
+    volumes:
+      - ./load-balancer/config.yaml:/app/config.yaml:ro
+      - ./notes-server/certs/servercert.pem:/app/certs/servercert.pem:ro
+      - ./notes-server/certs/serverkey.pem:/app/certs/serverkey.pem:ro
+    depends_on:
+      - server1
+      - server2
+      - server3
+    restart: unless-stopped
+
+volumes:
+  db-data: {}
+  target: {}
+  cargo-cache: {}

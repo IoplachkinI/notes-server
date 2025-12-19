@@ -58,9 +58,7 @@ async fn main() {
         .route("/notes", get(rest::get_all_notes))
         .merge(
             SwaggerUi::new("/swagger-ui")
-                .config(utoipa_swagger_ui::Config::new([
-                    "/rest/api-doc/openapi.json",
-                ]))
+                .config(utoipa_swagger_ui::Config::new(["/api-doc/openapi.json"]))
                 .url("/api-doc/openapi.json", rest::ApiDoc::openapi()),
         )
         .with_state(service.clone())

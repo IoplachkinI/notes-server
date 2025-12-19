@@ -10,10 +10,12 @@ use axum::{
     routing::any,
 };
 use axum_macros::debug_handler;
+use axum_server::tls_rustls::RustlsConfig;
 use balancer::LoadBalancer;
 use config::Config;
 use instance::Instance;
 use std::fs;
+use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::{net::TcpListener, sync::RwLock};
 use tower_http::trace::TraceLayer;
@@ -75,31 +77,79 @@ async fn main() {
         .with_state(balancer)
         .layer(TraceLayer::new_for_http());
 
-    let url = format!("0.0.0.0:{}", cfg.rest_port);
-    let listener = TcpListener::bind(url.clone())
-        .await
-        .expect("Failed to bind to address");
+    // Check for TLS certificate files
+    let cert_path =
+        std::env::var("TLS_CERT_PATH").unwrap_or_else(|_| "certs/servercert.pem".to_string());
+    let key_path =
+        std::env::var("TLS_KEY_PATH").unwrap_or_else(|_| "certs/serverkey.pem".to_string());
 
-    let grpc_url = format!("0.0.0.0:{}", cfg.grpc_port);
-    let grpc_listener = TcpListener::bind(grpc_url.clone())
-        .await
-        .expect("Failed to bind to gRPC address");
+    let use_tls = fs::metadata(&cert_path).is_ok() && fs::metadata(&key_path).is_ok();
 
-    tracing::info!("HTTP Load balancer listening on {}", url);
-    tracing::info!("gRPC Load balancer listening on {}", grpc_url);
+    let rest_addr: SocketAddr = format!("0.0.0.0:{}", cfg.rest_port)
+        .parse()
+        .expect("Failed to parse REST address");
+    let grpc_addr: SocketAddr = format!("0.0.0.0:{}", cfg.grpc_port)
+        .parse()
+        .expect("Failed to parse gRPC address");
 
-    // Run both servers concurrently
-    tokio::select! {
-        result = axum::serve(listener, router) => {
-            if let Err(e) = result {
-                tracing::error!("HTTP server error: {e}");
-                panic!("failed to start HTTP server: {e}");
+    if use_tls {
+        tracing::info!(
+            "Loading TLS certificates from {} and {}",
+            cert_path,
+            key_path
+        );
+        let tls_config = RustlsConfig::from_pem_file(&cert_path, &key_path)
+            .await
+            .expect("Failed to load TLS certificates");
+
+        tracing::info!("HTTPS Load balancer listening on {}", rest_addr);
+        tracing::info!("HTTPS gRPC Load balancer listening on {}", grpc_addr);
+
+        // Run both HTTPS servers concurrently
+        tokio::select! {
+            result = axum_server::bind_rustls(rest_addr, tls_config.clone())
+                .serve(router.into_make_service()) => {
+                if let Err(e) = result {
+                    tracing::error!("HTTPS server error: {e}");
+                    panic!("failed to start HTTPS server: {e}");
+                }
+            }
+            result = axum_server::bind_rustls(grpc_addr, tls_config)
+                .serve(grpc_router.into_make_service()) => {
+                if let Err(e) = result {
+                    tracing::error!("HTTPS gRPC server error: {e}");
+                    panic!("failed to start HTTPS gRPC server: {e}");
+                }
             }
         }
-        result = axum::serve(grpc_listener, grpc_router) => {
-            if let Err(e) = result {
-                tracing::error!("gRPC server error: {e}");
-                panic!("failed to start gRPC server: {e}");
+    } else {
+        tracing::warn!("TLS certificates not found, falling back to HTTP");
+        tracing::warn!("Expected cert at: {} and key at: {}", cert_path, key_path);
+
+        let listener = TcpListener::bind(rest_addr)
+            .await
+            .expect("Failed to bind to address");
+
+        let grpc_listener = TcpListener::bind(grpc_addr)
+            .await
+            .expect("Failed to bind to gRPC address");
+
+        tracing::info!("HTTP Load balancer listening on {}", rest_addr);
+        tracing::info!("HTTP gRPC Load balancer listening on {}", grpc_addr);
+
+        // Run both HTTP servers concurrently
+        tokio::select! {
+            result = axum::serve(listener, router) => {
+                if let Err(e) = result {
+                    tracing::error!("HTTP server error: {e}");
+                    panic!("failed to start HTTP server: {e}");
+                }
+            }
+            result = axum::serve(grpc_listener, grpc_router) => {
+                if let Err(e) = result {
+                    tracing::error!("gRPC server error: {e}");
+                    panic!("failed to start gRPC server: {e}");
+                }
             }
         }
     }
