@@ -1,6 +1,9 @@
 services:
   db:
     container_name: notes-db
+    profiles:
+     - http
+     - https
     image: postgres:17
     restart: unless-stopped
     user: postgres
@@ -24,6 +27,9 @@ services:
 
   server1:
     container_name: notes-server-1
+    profiles:
+     - http
+     - https
     build:
       context: .
       dockerfile: notes-server/Dockerfile
@@ -34,12 +40,13 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    profiles:
-      - release-multi-tier
     restart: unless-stopped
 
   server2:
     container_name: notes-server-2
+    profiles:
+     - http
+     - https
     build:
       context: .
       dockerfile: notes-server/Dockerfile
@@ -50,12 +57,13 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    profiles:
-      - release-multi-tier
     restart: unless-stopped
 
   server3:
     container_name: notes-server-3
+    profiles:
+     - http
+     - https
     build:
       context: .
       dockerfile: notes-server/Dockerfile
@@ -66,12 +74,13 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    profiles:
-      - release-multi-tier
     restart: unless-stopped
 
   server4:
     container_name: notes-server-4
+    profiles:
+     - http
+     - https
     build:
       context: .
       dockerfile: notes-server/Dockerfile
@@ -82,12 +91,13 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    profiles:
-      - release-multi-tier
     restart: unless-stopped
 
   server5:
     container_name: notes-server-5
+    profiles:
+     - http
+     - https
     build:
       context: .
       dockerfile: notes-server/Dockerfile
@@ -98,12 +108,13 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    profiles:
-      - release-multi-tier
     restart: unless-stopped
 
   server6:
     container_name: notes-server-6
+    profiles:
+     - http
+     - https
     build:
       context: .
       dockerfile: notes-server/Dockerfile
@@ -114,13 +125,14 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    profiles:
-      - release-multi-tier
     restart: unless-stopped
 
   # Secondary load balancers
   secondary-lb-1:
     container_name: notes-secondary-lb-1
+    profiles:
+     - http
+     - https
     build:
       context: .
       dockerfile: load-balancer/Dockerfile
@@ -131,18 +143,17 @@ services:
     #   - RUST_LOG=debug
     volumes:
       - ./load-balancer/configs/config.secondary.1.yaml:/app/config.yaml:ro
-      - ./notes-server/certs/servercert.pem:/app/certs/servercert.pem:ro
-      - ./notes-server/certs/serverkey.pem:/app/certs/serverkey.pem:ro
     depends_on:
       - server1
       - server2
       - server3
-    profiles:
-      - release-multi-tier
     restart: unless-stopped
 
   secondary-lb-2:
     container_name: notes-secondary-lb-2
+    profiles:
+     - http
+     - https
     build:
       context: .
       dockerfile: load-balancer/Dockerfile
@@ -153,19 +164,38 @@ services:
     #   - RUST_LOG=debug
     volumes:
       - ./load-balancer/configs/config.secondary.2.yaml:/app/config.yaml:ro
-      - ./notes-server/certs/servercert.pem:/app/certs/servercert.pem:ro
-      - ./notes-server/certs/serverkey.pem:/app/certs/serverkey.pem:ro
     depends_on:
       - server4
       - server5
       - server6
-    profiles:
-      - release-multi-tier
     restart: unless-stopped
 
-  # Primary load balancer
-  primary-lb:
-    container_name: notes-primary-lb
+  # Primary load balancer (https)
+  primary-lb-http:
+    container_name: notes-primary-lb-http
+    profiles:
+     - http
+    build:
+      context: .
+      dockerfile: load-balancer/Dockerfile
+      target: final
+    ports:
+      - 4000:8080
+      - 5000:5000
+    # environment:
+    #   - RUST_LOG=debug
+    volumes:
+      - ./load-balancer/configs/config.primary.yaml:/app/config.yaml:ro
+    depends_on:
+      - secondary-lb-1
+      - secondary-lb-2
+    restart: unless-stopped
+
+  # Primary load balancer (https)
+  primary-lb-https:
+    container_name: notes-primary-lb-https
+    profiles:
+     - https
     build:
       context: .
       dockerfile: load-balancer/Dockerfile
@@ -182,8 +212,6 @@ services:
     depends_on:
       - secondary-lb-1
       - secondary-lb-2
-    profiles:
-      - release-multi-tier
     restart: unless-stopped
 
 volumes:

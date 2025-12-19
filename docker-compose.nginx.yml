@@ -34,8 +34,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    profiles:
-      - release-nginx
     restart: unless-stopped
 
   server2:
@@ -50,8 +48,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    profiles:
-      - release-nginx
     restart: unless-stopped
 
   server3:
@@ -66,8 +62,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    profiles:
-      - release-nginx
     restart: unless-stopped
 
   nginx:
@@ -85,8 +79,6 @@ services:
       - server1
       - server2
       - server3
-    profiles:
-      - release-nginx
     restart: unless-stopped
 
 volumes:
