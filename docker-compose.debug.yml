@@ -1,0 +1,51 @@
+services:
+  db:
+    container_name: notes-db
+    image: postgres:17
+    restart: unless-stopped
+    user: postgres
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    expose:
+      - 5432
+    ports:
+      - 5434:5432
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  server-dev:
+    container_name: notes-server-dev
+    build:
+      context: .
+      dockerfile: notes-server/Dockerfile.dev
+    ports:
+      - 4000:8000
+      - 5000:50051
+    environment:
+      - PG_DSN=postgresql://postgres:postgres@db:5432/postgres
+      - RUST_LOG=debug
+    volumes:
+      - ./grpc-client:/app/grpc-client:ro
+      - ./notes-server:/app/notes-server:ro
+      - ./load-balancer:/app/load-balancer:ro
+      - ./proto:/app/proto:ro
+      - ./Cargo.lock:/app/Cargo.lock:ro
+      - ./Cargo.toml:/app/Cargo.toml:ro
+      - cargo-cache:/usr/local/cargo/registry
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db-data: {}
+  target: {}
+  cargo-cache: {}
