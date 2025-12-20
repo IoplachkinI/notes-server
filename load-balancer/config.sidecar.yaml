@@ -1,0 +1,20 @@
+instances: # Серверы, находящиеся в подчинении балансировщика (через sidecars)
+  - base_url: "https://server1-sidecar" # Базовый URL sidecar сервера
+    rest_port: 8443 # REST порт sidecar (HTTPS)
+    grpc_port: 50051 # gRPC порт sidecar (HTTPS)
+  - base_url: "https://server2-sidecar"
+    rest_port: 8443
+    grpc_port: 50051
+  - base_url: "https://server3-sidecar"
+    rest_port: 8443
+    grpc_port: 50051
+rest_port: 8080 # REST порт балансировщика, который торчит наружу
+grpc_port: 5000 # gRPC порт балансировщика, который торчит наружу
+strategy: "round_robin" # Стратегия балансировки
+# Поддерживаемые стратегии: round_robin, random, least_connections
+health_check_interval: "2s" # Интервал проверки серверов
+health_check_time_limit: "10s" # Время отсутствия подключения через которое сервер считается мертвым
+connection_timeout: "2s" # Таймаут на все запросы
+max_retries: 3 # Максимальное количество раз, которое балансировщик пытается перенаправить запрос
+# другому серверу, если выбранный еще считается живым, но вернул 5xx ошибку
+

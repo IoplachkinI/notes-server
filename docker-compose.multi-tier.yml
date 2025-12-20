@@ -240,8 +240,8 @@ services:
     #   - RUST_LOG=debug
     volumes:
       - ./load-balancer/configs/config.primary.yaml:/app/config.yaml:ro
-      - ./notes-server/certs/servercert.pem:/app/certs/servercert.pem:ro
-      - ./notes-server/certs/serverkey.pem:/app/certs/serverkey.pem:ro
+      - ./certs/servercert.pem:/app/certs/servercert.pem:ro
+      - ./certs/serverkey.pem:/app/certs/serverkey.pem:ro
     depends_on:
       - secondary-lb-1
       - secondary-lb-2

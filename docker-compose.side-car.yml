@@ -1,0 +1,243 @@
+services:
+  db:
+    container_name: notes-db
+    image: postgres:17
+    restart: unless-stopped
+    user: postgres
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    expose:
+      - 5432
+    ports:
+      - 5434:5432
+    networks:
+      - db-network
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  email-service:
+    container_name: notes-email-service
+    build:
+      context: .
+      dockerfile: email-service/Dockerfile
+      target: final
+    expose:
+      - 8001
+    volumes:
+      - ./email-service/config.yaml:/app/config.yaml:ro
+    networks:
+      - email-network
+      - db-network
+    restart: unless-stopped
+
+  email-service-sidecar:
+    container_name: notes-email-service-sidecar
+    build:
+      context: .
+      dockerfile: side-car/Dockerfile
+      target: final
+    ports:
+      - 8444:8443  # HTTPS REST for email-service
+    volumes:
+      - ./certs/servercert.pem:/app/certs/servercert.pem:ro
+      - ./certs/serverkey.pem:/app/certs/serverkey.pem:ro
+    environment:
+      - UPSTREAM_BASE_URL=email-service
+      - UPSTREAM_REST_PORT=8001
+      - UPSTREAM_GRPC_PORT=8001
+      - REST_PORT=8443
+      - GRPC_PORT=50051
+    networks:
+      - email-network
+      - public-network
+    depends_on:
+      - email-service
+    restart: unless-stopped
+
+  server1:
+    container_name: notes-server-1
+    build:
+      context: .
+      dockerfile: notes-server/Dockerfile
+      target: final
+    environment:
+      - PG_DSN=postgresql://postgres:postgres@db:5432/postgres
+      - RUST_LOG=debug
+      - EMAIL_SERVICE_URL=https://email-service-sidecar:8443
+    networks:
+      - server1-network
+      - db-network
+      - public-network
+    depends_on:
+      db:
+        condition: service_healthy
+      email-service-sidecar:
+        condition: service_started
+    restart: unless-stopped
+
+  server1-sidecar:
+    container_name: notes-server-1-sidecar
+    build:
+      context: .
+      dockerfile: side-car/Dockerfile
+      target: final
+    expose:
+      - 8443
+      - 50051
+    volumes:
+      - ./certs/servercert.pem:/app/certs/servercert.pem:ro
+      - ./certs/serverkey.pem:/app/certs/serverkey.pem:ro
+    environment:
+      - UPSTREAM_BASE_URL=server1
+      - UPSTREAM_REST_PORT=8000
+      - UPSTREAM_GRPC_PORT=50051
+      - REST_PORT=8443
+      - GRPC_PORT=50051
+    networks:
+      - server1-network
+      - public-network
+    depends_on:
+      - server1
+    restart: unless-stopped
+
+  server2:
+    container_name: notes-server-2
+    build:
+      context: .
+      dockerfile: notes-server/Dockerfile
+      target: final
+    environment:
+      - PG_DSN=postgresql://postgres:postgres@db:5432/postgres
+      - RUST_LOG=debug
+      - EMAIL_SERVICE_URL=https://email-service-sidecar:8443
+    networks:
+      - server2-network
+      - db-network
+      - public-network
+    depends_on:
+      db:
+        condition: service_healthy
+      email-service-sidecar:
+        condition: service_started
+    restart: unless-stopped
+
+  server2-sidecar:
+    container_name: notes-server-2-sidecar
+    build:
+      context: .
+      dockerfile: side-car/Dockerfile
+      target: final
+    expose:
+      - 8443
+      - 50051
+    volumes:
+      - ./certs/servercert.pem:/app/certs/servercert.pem:ro
+      - ./certs/serverkey.pem:/app/certs/serverkey.pem:ro
+    environment:
+      - UPSTREAM_BASE_URL=server2
+      - UPSTREAM_REST_PORT=8000
+      - UPSTREAM_GRPC_PORT=50051
+      - REST_PORT=8443
+      - GRPC_PORT=50051
+    networks:
+      - server2-network
+      - public-network
+    depends_on:
+      - server2
+    restart: unless-stopped
+
+  server3:
+    container_name: notes-server-3
+    build:
+      context: .
+      dockerfile: notes-server/Dockerfile
+      target: final
+    environment:
+      - PG_DSN=postgresql://postgres:postgres@db:5432/postgres
+      - RUST_LOG=debug
+      - EMAIL_SERVICE_URL=https://email-service-sidecar:8443
+    networks:
+      - server3-network
+      - db-network
+      - public-network
+    depends_on:
+      db:
+        condition: service_healthy
+      email-service-sidecar:
+        condition: service_started
+    restart: unless-stopped
+
+  server3-sidecar:
+    container_name: notes-server-3-sidecar
+    build:
+      context: .
+      dockerfile: side-car/Dockerfile
+      target: final
+    expose:
+      - 8443
+      - 50051
+    volumes:
+      - ./certs/servercert.pem:/app/certs/servercert.pem:ro
+      - ./certs/serverkey.pem:/app/certs/serverkey.pem:ro
+    environment:
+      - UPSTREAM_BASE_URL=server3
+      - UPSTREAM_REST_PORT=8000
+      - UPSTREAM_GRPC_PORT=50051
+      - REST_PORT=8443
+      - GRPC_PORT=50051
+    networks:
+      - server3-network
+      - public-network
+    depends_on:
+      - server3
+    restart: unless-stopped
+
+  custom-balancer:
+    container_name: notes-custom-balancer
+    build:
+      context: .
+      dockerfile: load-balancer/Dockerfile
+      target: final
+    ports:
+      - 4000:8080
+      - 5000:5000
+    volumes:
+      - ./load-balancer/config.sidecar.yaml:/app/config.yaml:ro
+      - ./certs/servercert.pem:/app/certs/servercert.pem:ro
+      - ./certs/serverkey.pem:/app/certs/serverkey.pem:ro
+    networks:
+      - public-network
+    depends_on:
+      - server1-sidecar
+      - server2-sidecar
+      - server3-sidecar
+    restart: unless-stopped
+
+networks:
+  db-network:
+    driver: bridge
+  email-network:
+    driver: bridge
+  server1-network:
+    driver: bridge
+  server2-network:
+    driver: bridge
+  server3-network:
+    driver: bridge
+  public-network:
+    driver: bridge
+
+volumes:
+  db-data: {}
+  target: {}
+  cargo-cache: {}
+

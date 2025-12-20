@@ -69,6 +69,7 @@ impl LoadBalancer {
 
         let client = reqwest::Client::builder()
             .timeout(self.con_timeout)
+            .danger_accept_invalid_certs(true)
             .build()
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -239,6 +240,7 @@ impl LoadBalancer {
         let client = reqwest::Client::builder()
             .http2_prior_knowledge()
             .timeout(self.con_timeout)
+            .danger_accept_invalid_certs(true)
             .build()
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 

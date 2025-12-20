@@ -219,7 +219,10 @@ pub async fn share_notes(
         "body": body
     });
 
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap_or_else(|_| reqwest::Client::new());
     match client
         .post(format!("{email_service_url}/email"))
         .json(&email_request)
