@@ -20,3 +20,9 @@ pub struct UpdateNoteRequest {
     /// Note content
     pub content: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct ShareNotesRequest {
+    /// Email address to send notes to
+    pub email: String,
+}

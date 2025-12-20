@@ -1,0 +1,5 @@
+from: <from-email>
+smtp_pass: <your-smtp-pass>
+smtp_relay: <your-smtp-relay>
+smtp_username: <your-smtp-username>
+port: 8080

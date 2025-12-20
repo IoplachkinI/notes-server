@@ -10,7 +10,7 @@ use utoipa::OpenApi;
 use std::sync::Arc;
 
 use crate::{
-    dto::{CreateNoteRequest, NoteResponse, UpdateNoteRequest},
+    dto::{CreateNoteRequest, NoteResponse, ShareNotesRequest, UpdateNoteRequest},
     service::NoteService,
 };
 
@@ -21,12 +21,14 @@ use crate::{
         update_note,
         delete_note,
         get_one_note,
-        get_all_notes
+        get_all_notes,
+        share_notes
     ),
     components(schemas(
         NoteResponse,
         CreateNoteRequest,
-        UpdateNoteRequest
+        UpdateNoteRequest,
+        ShareNotesRequest
     )),
     tags(
         (name = "notes", description = "Notes management API")
@@ -157,6 +159,93 @@ pub async fn get_all_notes(State(service): State<Arc<NoteService>>) -> Response 
         Err(e) => {
             tracing::error!("failed to get note entries: {}", e);
             (StatusCode::INTERNAL_SERVER_ERROR, "Failed to get all notes").into_response()
+        }
+    }
+}
+
+#[utoipa::path(
+    post,
+    path = "/share",
+    request_body = ShareNotesRequest,
+    responses(
+        (status = 200, description = "Notes sent successfully"),
+        (status = 400, description = "Bad request"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "notes"
+)]
+#[debug_handler]
+pub async fn share_notes(
+    State(service): State<Arc<NoteService>>,
+    Json(payload): Json<ShareNotesRequest>,
+) -> Response {
+    use chrono::Local;
+    use std::env;
+
+    // Get email service URL
+    let email_service_url =
+        env::var("EMAIL_SERVICE_URL").unwrap_or_else(|_| "http://localhost:8001".to_string());
+
+    // Get all notes
+    let notes = match service.get_all_notes_with_timestamps().await {
+        Ok(notes) => notes,
+        Err(e) => {
+            tracing::error!("failed to get notes: {}", e);
+            return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to get notes").into_response();
+        }
+    };
+
+    // Format notes
+    let body = if notes.is_empty() {
+        "No notes available.".to_string()
+    } else {
+        notes
+            .into_iter()
+            .map(|note| {
+                let time_str = note
+                    .created_at
+                    .with_timezone(&Local)
+                    .format("%Y-%m-%d %H:%M:%S");
+                format!("{}: {}", time_str, note.content)
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+
+    // Call email service
+    let email_request = serde_json::json!({
+        "to": payload.email,
+        "subject": "Notes",
+        "body": body
+    });
+
+    let client = reqwest::Client::new();
+    match client
+        .post(format!("{email_service_url}/email"))
+        .json(&email_request)
+        .send()
+        .await
+    {
+        Ok(response) => {
+            if response.status().is_success() {
+                (StatusCode::OK, "Notes sent successfully").into_response()
+            } else {
+                let status_text = response.status().to_string();
+                tracing::error!("Email service returned error: {}", status_text);
+                (
+                    StatusCode::BAD_GATEWAY,
+                    format!("Email service error: {status_text}"),
+                )
+                    .into_response()
+            }
+        }
+        Err(e) => {
+            tracing::error!("Failed to call email service: {}", e);
+            (
+                StatusCode::BAD_GATEWAY,
+                format!("Failed to send email: {e}"),
+            )
+                .into_response()
         }
     }
 }
