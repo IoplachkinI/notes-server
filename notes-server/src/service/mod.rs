@@ -1,5 +1,6 @@
 use crate::{
     dto::{CreateNoteRequest, NoteResponse, UpdateNoteRequest},
+    models::Note,
     repository::Repository,
 };
 
@@ -74,5 +75,9 @@ impl NoteService {
                 })
                 .collect()
         })
+    }
+
+    pub async fn get_all_notes_with_timestamps(&self) -> Result<Vec<Note>, tokio_postgres::Error> {
+        self.repo.lock().await.get_all_notes().await
     }
 }

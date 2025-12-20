@@ -1,3 +1,4 @@
-/notes-server/target
-/grpc-client/target
-/target
+# Ignore all directories named 'target' at any level
+target/
+
+/email-service/config.yaml

@@ -1,7 +1,9 @@
 [workspace]
 members = [
     "notes-server",
-    "grpc-client"
-, "load-balancer"]
+    "grpc-client", 
+    "load-balancer", 
+    "email-service"
+, "side-car"]
 resolver = "2"
 

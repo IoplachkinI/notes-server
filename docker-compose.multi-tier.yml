@@ -25,6 +25,21 @@ services:
       timeout: 5s
       retries: 5
 
+  email-service:
+    container_name: notes-email-service
+    profiles:
+     - http
+     - https
+    build:
+      context: .
+      dockerfile: email-service/Dockerfile
+      target: final
+    expose:
+      - 8001
+    volumes:
+      - ./email-service/config.yaml:/app/config.yaml:ro
+    restart: unless-stopped
+
   server1:
     container_name: notes-server-1
     profiles:
@@ -37,9 +52,12 @@ services:
     environment:
       - PG_DSN=postgresql://postgres:postgres@db:5432/postgres
       - RUST_LOG=debug
+      - EMAIL_SERVICE_URL=http://email-service:8001
     depends_on:
       db:
         condition: service_healthy
+      email-service:
+        condition: service_started
     restart: unless-stopped
 
   server2:
@@ -54,9 +72,12 @@ services:
     environment:
       - PG_DSN=postgresql://postgres:postgres@db:5432/postgres
       - RUST_LOG=debug
+      - EMAIL_SERVICE_URL=http://email-service:8001
     depends_on:
       db:
         condition: service_healthy
+      email-service:
+        condition: service_started
     restart: unless-stopped
 
   server3:
@@ -71,9 +92,12 @@ services:
     environment:
       - PG_DSN=postgresql://postgres:postgres@db:5432/postgres
       - RUST_LOG=debug
+      - EMAIL_SERVICE_URL=http://email-service:8001
     depends_on:
       db:
         condition: service_healthy
+      email-service:
+        condition: service_started
     restart: unless-stopped
 
   server4:
@@ -88,9 +112,12 @@ services:
     environment:
       - PG_DSN=postgresql://postgres:postgres@db:5432/postgres
       - RUST_LOG=debug
+      - EMAIL_SERVICE_URL=http://email-service:8001
     depends_on:
       db:
         condition: service_healthy
+      email-service:
+        condition: service_started
     restart: unless-stopped
 
   server5:
@@ -105,9 +132,12 @@ services:
     environment:
       - PG_DSN=postgresql://postgres:postgres@db:5432/postgres
       - RUST_LOG=debug
+      - EMAIL_SERVICE_URL=http://email-service:8001
     depends_on:
       db:
         condition: service_healthy
+      email-service:
+        condition: service_started
     restart: unless-stopped
 
   server6:
@@ -122,9 +152,12 @@ services:
     environment:
       - PG_DSN=postgresql://postgres:postgres@db:5432/postgres
       - RUST_LOG=debug
+      - EMAIL_SERVICE_URL=http://email-service:8001
     depends_on:
       db:
         condition: service_healthy
+      email-service:
+        condition: service_started
     restart: unless-stopped
 
   # Secondary load balancers

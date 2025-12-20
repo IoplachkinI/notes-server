@@ -17,7 +17,6 @@ use handlers::rest;
 use repository::Repository;
 
 use tower_http::trace::TraceLayer;
-use tracing::Span;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -56,6 +55,7 @@ async fn main() {
         .route("/notes/{id}", delete(rest::delete_note))
         .route("/notes/{id}", get(rest::get_one_note))
         .route("/notes", get(rest::get_all_notes))
+        .route("/share", post(rest::share_notes))
         .merge(
             SwaggerUi::new("/swagger-ui")
                 .config(utoipa_swagger_ui::Config::new(["/api-doc/openapi.json"]))
@@ -71,7 +71,7 @@ async fn main() {
         .layer(TraceLayer::new_for_http());
 
     let router = Router::new()
-        .route("/", any(root))
+        .route("/", any(health_check))
         .merge(rest_router)
         .nest("/soap", soap_router);
 
@@ -107,6 +107,6 @@ async fn main() {
     }
 }
 
-async fn root() -> Response {
-    (StatusCode::OK, "Hello world!").into_response()
+async fn health_check() -> Response {
+    (StatusCode::OK, "Hello from notes server!").into_response()
 }
