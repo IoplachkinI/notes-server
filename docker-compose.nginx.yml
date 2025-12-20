@@ -94,8 +94,8 @@ services:
       - 5000:5000 # gRPC HTTPS
     volumes:
       - ./notes-server/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./notes-server/certs/servercert.pem:/etc/ssl/certs/notes.pem:ro
-      - ./notes-server/certs/serverkey.pem:/etc/ssl/private/notes.pem:ro
+      - ./certs/servercert.pem:/etc/ssl/certs/notes.pem:ro
+      - ./certs/serverkey.pem:/etc/ssl/private/notes.pem:ro
     depends_on:
       - server1
       - server2

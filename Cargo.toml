@@ -3,7 +3,7 @@ members = [
     "notes-server",
     "grpc-client", 
     "load-balancer", 
-    "email-service"
-, "side-car"]
+    "email-service", 
+    "side-car"]
 resolver = "2"
 

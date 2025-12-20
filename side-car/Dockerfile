@@ -4,7 +4,7 @@
 # Create a stage for building the application.
 
 ARG RUST_VERSION=1.91.1
-ARG APP_NAME=grpc-client
+ARG APP_NAME=side-car
 FROM rust:${RUST_VERSION}-slim-bullseye AS build
 ARG APP_NAME
 WORKDIR /app
@@ -14,7 +14,6 @@ RUN apt-get update && \
     apt-get install -y \
     libssl-dev \
     pkg-config \
-    protobuf-compiler \
     && rm -rf /var/lib/apt/lists/*
 
 # Build the application.
@@ -24,14 +23,14 @@ RUN apt-get update && \
 # Leverage a bind mount to the src directory to avoid having to copy the
 # source code into the container. Once built, copy the executable to an
 # output directory before the cache mounted /app/target is unmounted.
-RUN --mount=type=bind,source=grpc-client/src,target=/app/grpc-client/src \
-    --mount=type=bind,source=grpc-client/Cargo.toml,target=/app/grpc-client/Cargo.toml \
-    --mount=type=bind,source=grpc-client/build.rs,target=/app/grpc-client/build.rs \
+RUN --mount=type=bind,source=side-car/src,target=/app/side-car/src \
+    --mount=type=bind,source=side-car/Cargo.toml,target=/app/side-car/Cargo.toml \
     --mount=type=bind,source=notes-server/Cargo.toml,target=/app/notes-server/Cargo.toml \
     --mount=type=bind,source=notes-server/build.rs,target=/app/notes-server/build.rs \
+    --mount=type=bind,source=grpc-client/Cargo.toml,target=/app/grpc-client/Cargo.toml \
+    --mount=type=bind,source=grpc-client/build.rs,target=/app/grpc-client/build.rs \
     --mount=type=bind,source=load-balancer/Cargo.toml,target=/app/load-balancer/Cargo.toml \
     --mount=type=bind,source=email-service/Cargo.toml,target=/app/email-service/Cargo.toml \
-    --mount=type=bind,source=side-car/Cargo.toml,target=/app/side-car/Cargo.toml \
     --mount=type=bind,source=Cargo.toml,target=/app/Cargo.toml \
     --mount=type=bind,source=Cargo.lock,target=/app/Cargo.lock \
     --mount=type=bind,source=proto,target=/app/proto \
@@ -39,19 +38,27 @@ RUN --mount=type=bind,source=grpc-client/src,target=/app/grpc-client/src \
     <<EOF
 set -e
 # Create dummy source files for other workspace members so cargo can validate them
-mkdir -p /app/notes-server/src /app/load-balancer/src /app/email-service/src /app/side-car/src
+mkdir -p /app/notes-server/src /app/grpc-client/src /app/load-balancer/src /app/email-service/src
 echo "fn main() {}" > /app/notes-server/src/main.rs
+echo "fn main() {}" > /app/grpc-client/src/main.rs
 echo "fn main() {}" > /app/load-balancer/src/main.rs
 echo "fn main() {}" > /app/email-service/src/main.rs
-echo "fn main() {}" > /app/side-car/src/main.rs
 cargo build --locked --release -p $APP_NAME
-cp ./target/release/$APP_NAME /bin/client
+cp ./target/release/$APP_NAME /bin/side-car
 EOF
 
 ################################################################################
 # Create a new stage for running the application that contains the minimal
-# runtime dependencies for the application.
+# runtime dependencies for the application. This often uses a different base
+# image from the build stage where the necessary files are copied from the build
+# stage.
 FROM debian:bullseye-slim AS final
+
+# Install CA certificates for SSL/TLS verification
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 # Create a non-privileged user that the app will run under.
 ARG UID=10001
@@ -66,7 +73,12 @@ RUN adduser \
 USER appuser
 
 # Copy the executable from the "build" stage.
-COPY --from=build /bin/client /bin/
+COPY --from=build /bin/side-car /bin/
+
+# Expose the ports that the application listens on.
+EXPOSE 8443 50051
 
 # What the container should run when it is started.
-CMD ["/bin/client"]
+WORKDIR /app
+CMD ["/bin/side-car"]
+

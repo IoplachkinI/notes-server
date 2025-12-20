@@ -28,6 +28,7 @@ RUN --mount=type=bind,source=load-balancer/src,target=/app/load-balancer/src \
     --mount=type=bind,source=notes-server/Cargo.toml,target=/app/notes-server/Cargo.toml \
     --mount=type=bind,source=grpc-client/Cargo.toml,target=/app/grpc-client/Cargo.toml \
     --mount=type=bind,source=email-service/Cargo.toml,target=/app/email-service/Cargo.toml \
+    --mount=type=bind,source=side-car/Cargo.toml,target=/app/side-car/Cargo.toml \
     --mount=type=bind,source=notes-server/build.rs,target=/app/notes-server/build.rs \
     --mount=type=bind,source=grpc-client/build.rs,target=/app/grpc-client/build.rs \
     --mount=type=bind,source=Cargo.toml,target=/app/Cargo.toml \
@@ -37,10 +38,11 @@ RUN --mount=type=bind,source=load-balancer/src,target=/app/load-balancer/src \
     <<EOF
 set -e
 # Create dummy source files for other workspace members so cargo can validate them
-mkdir -p /app/notes-server/src /app/grpc-client/src /app/email-service/src
+mkdir -p /app/notes-server/src /app/grpc-client/src /app/email-service/src /app/side-car/src
 echo "fn main() {}" > /app/notes-server/src/main.rs
 echo "fn main() {}" > /app/grpc-client/src/main.rs
 echo "fn main() {}" > /app/email-service/src/main.rs
+echo "fn main() {}" > /app/side-car/src/main.rs
 cargo build --locked --release -p $APP_NAME
 cp ./target/release/$APP_NAME /bin/load-balancer
 EOF

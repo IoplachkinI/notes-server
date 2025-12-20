@@ -52,6 +52,7 @@ impl Instance {
     pub async fn health_check(&mut self) {
         let client = Client::builder()
             .timeout(self.con_timeout)
+            .danger_accept_invalid_certs(true)
             .build()
             .expect("failed to initialize a client");
 
