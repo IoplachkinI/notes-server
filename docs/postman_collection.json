@@ -1,0 +1,244 @@
+{
+	"info": {
+		"_postman_id": "b37b779c-0be2-4c01-a92d-8698882531f6",
+		"name": "Notes server",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "39552771"
+	},
+	"item": [
+		{
+			"name": "{{base_url}}/",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "{{base_url}}/notes",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"content\":\"Test note content\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/notes",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"notes"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "{{base_url}}/notes/{id}",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"content\":\"Test note content 2\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/notes/2",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"notes",
+						"2"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "{{base_url}}/notes/{id}",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"content\":\"Test note content\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/notes/1",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"notes",
+						"1"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "{{base_url}}/notes",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"content\":\"Test note content\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/notes",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"notes"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "{{base_url}}/notes/{id}",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"content\":\"Test note content\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/notes/12",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"notes",
+						"12"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "{{base_url}}/soap",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<soap:Envelope\nxmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\"\nsoap:encodingStyle=\"http://www.w3.org/2003/05/soap-encoding\">\n  <soap:Body>\n    <m:GetAllNotes xmlns:m=\"https://notes-server/soap/v1\">\n    </m:GetAllNotes>\n  </soap:Body>\n</soap:Envelope>",
+					"options": {
+						"raw": {
+							"language": "xml"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/soap",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"soap"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "{{base_url}}/share",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"email\":\"test@test.test\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/share",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"share"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "{{email_url}}/email",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"to\":\"test@test.test\",\n    \"subject\":\"Hello from rust!\",\n    \"body\":\"Hello my dear friend! How have you been?\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{email_url}}/email",
+					"host": [
+						"{{email_url}}"
+					],
+					"path": [
+						"email"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
